@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "hack/readline.h"
+#include "logger/logger.h"
 #include "hack/maps.h"
 
 #ifndef WARNING
@@ -45,14 +45,16 @@ typedef struct _event {
 	pid_t pid;
 	int mem_fd;
 	Maps *mem;
+	Logger *log;
 
 	bool end;
 
-	callback scan, quit;
+	callback scan, quit, print_map;
 } Event;
 
 bool scan(Event *ev, char *in);
 bool quit(Event *ev, char *in);
+bool print_map(Event *ev, char *in);
 bool interpreting(Event *ev, char *in);
 
 #endif /* end of include guard: HACK_H_326FWU4H */
