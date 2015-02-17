@@ -6,11 +6,16 @@ newoption(
 	}
 )
 
+newoption(
+	{
+		trigger="with-readline",
+		description="Use of readline for the prompt.",
+	}
+)
+
 if not _OPTIONS["install-prefix"] then
 	_OPTIONS["install-prefix"] = os.getenv("HOME") .. "/.local/"
 end
-
-print(_OPTIONS)
 
 solution("Hacking")
 	configurations({"debug", "release"})
@@ -38,7 +43,7 @@ solution("Hacking")
 	configuration("debug")
 		buildoptions(
 			{
-				"-g"
+				"-g3"
 			}
 		)
 
@@ -47,6 +52,19 @@ solution("Hacking")
 			"include/"
 		}
 	)
+
+	project("logger")
+		language("C")
+		kind("SharedLib")
+
+		location("build/lib")
+		targetdir("build/lib")
+
+		files(
+			{
+				"src/logger/*.c"
+			}
+		)
 
 	project("scanner")
 		language("C")
@@ -57,20 +75,39 @@ solution("Hacking")
 
 		files(
 			{
-				"src/hack/*.c"
+				"src/hack/hack.c",
+				"src/hack/main.c",
+				"src/hack/maps.c"
+			}
+		)
+
+		configuration("with-readline")
+			files(
+				{
+					"src/hack/readline.c"
+				}
+			)
+			defines(
+				{
+					"USE_readline"
+				}
+			)
+			links(
+				{
+					"readline"
+				}
+			)
+		libdirs(
+			{
+				"build/lib"
 			}
 		)
 
 		links(
 			{
-				"readline"
+				"logger"
 			}
 		)
-		-- libdirs(
-			-- {
-				-- "build/lib"
-			-- }
-		-- )
 
 	project("tester")
 		language("C")
