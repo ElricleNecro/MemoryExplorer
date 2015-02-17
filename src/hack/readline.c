@@ -11,7 +11,7 @@ bool RLData_init(RLData *new, const char *prompt, const char *hist_file)
 
 	if( prompt )									// If prompt is not NULL:
 	{
-		if( (new->prompt = malloc((l_prompt + 1)*sizeof(char))) == NULL )	// We allocate our string.
+		if( (new->prompt = calloc(l_prompt + 1, sizeof(char))) == NULL )	// We allocate our string.
 		{									// Dealing with possible errors.
 			perror("Prompt allocation failed:");
 			RLData_free(new);
@@ -22,7 +22,7 @@ bool RLData_init(RLData *new, const char *prompt, const char *hist_file)
 
 	if( hist_file )									// Exactly the same story here.
 	{
-		if( (new->hist_file = malloc((l_hist_file + 1)*sizeof(char))) == NULL )
+		if( (new->hist_file = calloc(l_hist_file + 1, sizeof(char))) == NULL )
 		{
 			perror("History file name allocation failed:");
 			RLData_free(new);
