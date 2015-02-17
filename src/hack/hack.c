@@ -10,10 +10,10 @@ bool scan(Event *ev, char *in)
 
 	if( sscanf(in, "scan %zd %zd", &offset, &bytes_to_read) < 1 )
 	{
-		ERROR("incorrect number of argument.");
+		Logger_error(ev->log, "incorrect number of argument.");
 		return false;
 	}
-	fprintf(stderr, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
+	Logger_info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
 	char buf[bytes_to_read];
 
@@ -29,7 +29,7 @@ bool scan(Event *ev, char *in)
 	/* read(ev->mem_fd, buf, bytes_to_read); */
 	pread(ev->mem_fd, buf, bytes_to_read, offset);
 
-	printf("%d\n", *((int*)buf));
+	Logger_info(ev->log, "%d\n", *((int*)buf));
 
 	ptrace(
 		PTRACE_DETACH,
@@ -50,10 +50,10 @@ bool scan(Event *ev, char *in)
 
 	if( sscanf(in, "scan %zd %zd", &offset, &bytes_to_read) < 1 )
 	{
-		ERROR("incorrect number of argument.");
+		Logger_error(ev->log, "incorrect number of argument.");
 		return false;
 	}
-	fprintf(stderr, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
+	Logger_info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
 	char buf[bytes_to_read];
 
@@ -78,11 +78,11 @@ bool scan(Event *ev, char *in)
 	if( nread != bytes_to_read )
 	{
 		if( errno == 1 )
-			ERROR("operation not permitted");
+			Logger_error(ev->log, "operation not permitted");
 		else if( errno == 14 )
-			ERROR("BAD ADDRESS");
+			Logger_error(ev->log, "BAD ADDRESS");
 		else
-			ERROR("read %zd instead of %zu. Error code %d", nread, bytes_to_read, errno);
+			Logger_error(ev->log, "read %zd instead of %zu. Error code %d", nread, bytes_to_read, errno);
 		return false;
 	}
 
@@ -98,6 +98,40 @@ bool quit(Event *ev, char *in)
 	return true;
 }
 
+bool print_map(Event *ev, char *in)
+{
+	Logger_debug(
+		ev->log,
+		"Entering '%s' function\n",
+		__func__
+	);
+	for(Maps *zone=ev->mem; zone != NULL; zone=zone->next)
+	{
+		if( zone->type == STACK )
+			printf("Stack from %lxu -> %lxu (%lu)\n", zone->start, zone->end, zone->end - zone->start);
+		else if( zone->type == HEAP )
+			printf("Heap from %lxu -> %lxu (%lu)\n", zone->start, zone->end, zone->end - zone->start);
+		else if( zone->type == EXE )
+			printf("Exe from %lxu -> %lxu (%lu)\n", zone->start, zone->end, zone->end - zone->start);
+		else if( zone->type == CODE )
+			printf("Code from %lxu -> %lxu (%lu)\n", zone->start, zone->end, zone->end - zone->start);
+		if( zone->read == 'r' )
+			printf("\t-> Read permission\n");
+		if( zone->read == 'w' )
+			printf("\t-> Write permission\n");
+		if( zone->read == 'x' )
+			printf("\t-> Execution permission\n");
+		printf("\t-> %s\n", zone->filename);
+	}
+	Logger_debug(
+		ev->log,
+		"Leaving '%s' function\n",
+		__func__
+	);
+
+	return true;
+}
+
 // The interpreter loop, take care of her
 bool interpreting(Event *ev, char *input)
 {
@@ -105,66 +139,11 @@ bool interpreting(Event *ev, char *input)
 		return ev->quit(ev, input);
 	else if(!strncmp("scan", input, 4))
 		return ev->scan(ev, input);
+	else if(!strncmp("print_map", input, 9))
+		return ev->print_map(ev, input);
 
-	ERROR("command (%s) not found.", input);
+	Logger_error(ev->log, "command (%s) not found.", input);
 
 	return false;
-}
-
-int main(int argc, char *argv[])
-{
-	if( argc <= 1 )
-	{
-		fprintf(stderr, "Call must be: %s (PID)\n", argv[0]);
-		return EXIT_FAILURE;
-	}
-
-	RLData cli;
-	char input[1024];			//<- the input string...
-	snprintf(input, 1023, "/proc/%s/mem", argv[1]);
-
-	Event ev = {
-		.pid = atoi(argv[1]),		//<- pid of the process to read
-		.mem_fd = open(
-			input,
-			O_RDWR
-		),				//<- pid memory file
-		.mem = NULL,			//<- memory map
-		.end = false,			//<- we do not want to terminate the program right now
-		.quit = quit,
-		.scan = scan,
-	};					//<- an event structure: will contain each callback action
-
-	RLData_init(&cli, "scanmem > ", "~/.scanmem_history");
-	RLData_readHistory(&cli);
-
-	Maps_read(&ev.mem, ev.pid);
-
-	memset(input, 0, 1024 * sizeof(char));	//<- ... is set to 0 everywhere
-
-	printf("Writing pid %d\n", ev.pid);
-
-	while( !ev.end )			//<- the event loop, where we will interprete all command
-	{
-		printf("%s > ", argv[0]);
-		fgets(
-			input,
-			1023,
-			stdin
-		);				//<- we read stdin for commands...
-		if(input[strlen(input) - 1] == '\n')
-			input[strlen(input) - 1] = '\0';
-		interpreting(
-			&ev,
-			input
-		);//<- ... and interprete them.
-	}
-
-	RLData_saveHistory(&cli);
-
-	RLData_free(&cli);
-	Maps_free(&ev.mem);
-
-	return EXIT_SUCCESS;
 }
 
