@@ -64,16 +64,15 @@ int main(int argc, char *argv[])
 #ifdef USE_readline
 		RLData_get(&cli);
 
-		Logger_debug(ev.log, "We've get: '%s'\n", cli.line);
+		if( cli.line )
+			Logger_debug(ev.log, "We've get: '%s'\n", cli.line);
+		else
+			Logger_debug(ev.log, "We've get: '^D'\n");
 
-		if( cli.line && *cli.line )
-		{
-			Logger_debug(ev.log, "Ready to interprete: '%s'\n", cli.line);
-			interpreting(
-					&ev,
-					cli.line
-				    );
-		}
+		interpreting(
+				&ev,
+				cli.line
+			    );
 #else
 		printf("%s > ", argv[0]);
 		fgets(
