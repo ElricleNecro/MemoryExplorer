@@ -135,7 +135,7 @@ bool print_map(Event *ev, char *in)
 // The interpreter loop, take care of her
 bool interpreting(Event *ev, char *input)
 {
-	if(!strncmp("quit", input, 4))
+	if(!input || !strncmp("quit", input, 4))
 		return ev->quit(ev, input);
 	else if(!strncmp("scan", input, 4))
 		return ev->scan(ev, input);
