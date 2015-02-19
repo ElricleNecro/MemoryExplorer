@@ -46,6 +46,11 @@ solution("Hacking")
 				"-g3"
 			}
 		)
+		flags(
+			{
+				"Symbols"
+			}
+		)
 
 	includedirs(
 		{
@@ -63,6 +68,31 @@ solution("Hacking")
 		files(
 			{
 				"src/logger/*.c"
+			}
+		)
+
+	project("dict")
+		language("C")
+		kind("SharedLib")
+
+		location("build/lib")
+		targetdir("build/lib")
+
+		files(
+			{
+				"src/dict/*.c"
+			}
+		)
+
+		defines(
+			{
+				"_XOPEN_SOURCE"
+			}
+		)
+
+		links(
+			{
+				"m",
 			}
 		)
 
@@ -105,7 +135,8 @@ solution("Hacking")
 
 		links(
 			{
-				"logger"
+				"logger",
+				"dict"
 			}
 		)
 
