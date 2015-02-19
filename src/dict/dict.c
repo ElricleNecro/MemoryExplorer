@@ -78,9 +78,16 @@ void* Dict_get(Dict obj, const char *key)
 {
 	int k = obj->hash(key, obj->size);
 
-	for(Elem item = obj->array[k]; item->next != NULL; item = item->next)
+	if( !obj->array[k] )
+	{
+		return NULL;
+	}
+
+	for(Elem item = obj->array[k]; item; item = item->next)
+	{
 		if( !strcmp(item->key, key) )
 			return item->item;
+	}
 
 	return NULL;
 }
@@ -99,15 +106,20 @@ bool Dict_set(Dict obj, const char *key, void *item)
 
 	Elem elem = obj->array[k];
 
-	while( elem->next )
+	while( elem->next && strcmp(elem->key, key) )
 		elem = elem->next;
 
-	elem->next = Elem_new(key, item);
+	if( elem->next )
+		elem->item = item;
+	else
+	{
+		elem->next = Elem_new(key, item);
 
-	if( !elem->next )
-		return false;
+		if( !elem->next )
+			return false;
 
-	elem->next->prev = elem;
+		elem->next->prev = elem;
+	}
 
 	return true;
 }
