@@ -13,6 +13,9 @@
 // Taken from: http://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
 char *trim(char *str)
 {
+	if( str == NULL )
+		return NULL;
+
 	char *end;
 
 	// Trim leading space
@@ -59,6 +62,7 @@ int main(int argc, char *argv[])
 		.quit = quit,
 		.scan = scan,
 		.print_map = print_map,
+		.print_cmd_dict = print_cmd_dict,
 	};					//<- an event structure: will contain each callback action
 
 	Logger_info(
@@ -104,6 +108,15 @@ int main(int argc, char *argv[])
 			strerror(errno)
 		);
 	}
+	if( !Dict_set(ev.cmd, "print_cmd_dict", (void*)print_cmd_dict) )
+	{
+		Logger_error(
+			ev.log,
+			"Unable to create key '%s': %s\n",
+			"print_cmd_dict",
+			strerror(errno)
+		);
+	}
 
 #ifdef USE_readline
 	Logger_info(
@@ -138,11 +151,12 @@ int main(int argc, char *argv[])
 
 		cmd = trim(cli.line);		//<- ... we trimmed it...
 
-		Logger_debug(ev.log, "We've get: '%s'\n", ( cmd )?cmd:"^D");
+		Logger_debug(ev.log, "We've get: '%s'\n", ( cli.line )?cli.line:"^D");
 
+		/* if( *cmd )			//<- (we are ignoring empty string) */
 		interpreting(
-				&ev,
-				cmd
+			&ev,
+			cmd
 		);				//<- ... and we interprete it.
 #else
 		printf("%s > ", argv[0]);
@@ -166,6 +180,7 @@ int main(int argc, char *argv[])
 
 	RLData_free(&cli);
 #endif
+	Dict_free(ev.cmd);
 	Maps_free(&ev.mem);
 	Logger_free(ev.log);
 
