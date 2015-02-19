@@ -1,5 +1,9 @@
-#include "logger/logger.h"
+#include <errno.h>
+#include <string.h>
+
+#include "dict/dict.h"
 #include "hack/hack.h"
+#include "logger/logger.h"
 
 #ifdef USE_readline
 #include "hack/readline.h"
@@ -28,6 +32,7 @@ int main(int argc, char *argv[])
 		.log = Logger_new(stderr, ALL),
 		.mem = NULL,			//<- memory map
 		.end = false,			//<- we do not want to terminate the program right now
+		.cmd = NULL,
 		.quit = quit,
 		.scan = scan,
 		.print_map = print_map,
@@ -35,10 +40,26 @@ int main(int argc, char *argv[])
 
 	Logger_info(
 		ev.log,
+		"Creating dictionnary.\n"
+	);
+
+	;
+
+	if( (ev.cmd = Dict_new(DEF_DICT_SIZE)) == NULL )
+	{
+		Logger_error(
+			ev.log,
+			"Unable to create dictionnary: %s\n",
+			strerror(errno)
+		);
+	}
+
+#ifdef USE_readline
+	Logger_info(
+		ev.log,
 		"Loading readline.\n"
 	);
 
-#ifdef USE_readline
 	RLData_init(&cli, "scanmem > ", "/home/plum/.scanmem_history");
 	RLData_readHistory(&cli);
 #endif
@@ -64,10 +85,7 @@ int main(int argc, char *argv[])
 #ifdef USE_readline
 		RLData_get(&cli);
 
-		if( cli.line )
-			Logger_debug(ev.log, "We've get: '%s'\n", cli.line);
-		else
-			Logger_debug(ev.log, "We've get: '^D'\n");
+		Logger_debug(ev.log, "We've get: '%s'\n", ( cli.line )?cli.line:"^D");
 
 		interpreting(
 				&ev,
