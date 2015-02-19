@@ -45,11 +45,16 @@ Elem Elem_new(const char *key, void* item)
 
 void Elem_free(Elem obj)
 {
-	if( obj )
+	if( !obj )
 		return ;
-	if( obj->key )
-		free(obj->key);
-	free(obj);
+
+	while( obj )
+	{
+		Elem tmp = obj;
+		obj = obj->next;
+		free(tmp->key);
+		free(tmp);
+	}
 }
 
 Dict Dict_new(const int size)
@@ -127,23 +132,26 @@ bool Dict_set(Dict obj, const char *key, void *item)
 void Dict_free(Dict obj)
 {
 #ifdef USE_CHAINED_DICT
+	Elem_free(obj->fisrt);
 #else
 	for (unsigned int i = 0; i < obj->size; i++)
 	{
-		if( obj->array[i] )
-		{
-			/* if( obj->array[i]->next ) */
+		Elem_free(obj->array[i]);
+
+		/* if( obj->array[i] ) */
+		/* { */
+			/* [> if( obj->array[i]->next ) <] */
+			/* [> { <] */
+			/* Elem tmp, actual = obj->array[i]; */
+			/* while( actual ) */
 			/* { */
-			Elem tmp, actual = obj->array[i];
-			while( actual )
-			{
-				tmp = actual;
-				actual = actual->next;
-				free(tmp);
-			}
+				/* tmp = actual; */
+				/* actual = actual->next; */
+				/* free(tmp); */
 			/* } */
-			/* free(obj->array[i]); */
-		}
+			/* [> } <] */
+			/* [> free(obj->array[i]); <] */
+		/* } */
 	}
 	free(obj->array);
 #endif
