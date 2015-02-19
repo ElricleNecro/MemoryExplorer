@@ -28,6 +28,7 @@
 
 #include "logger/logger.h"
 #include "hack/maps.h"
+#include "dict/dict.h"
 
 #ifndef WARNING
 	#define WARNING(str, ...) fprintf(stderr, "\033[33mWarning\033[00m: "str"\n", ##__VA_ARGS__)
@@ -48,6 +49,8 @@ typedef struct _event {
 	Logger *log;
 
 	bool end;
+
+	Dict cmd;
 
 	callback scan, quit, print_map;
 } Event;
