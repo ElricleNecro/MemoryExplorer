@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <errno.h>
 #include <string.h>
 
@@ -9,6 +10,27 @@
 #include "hack/readline.h"
 #endif
 
+// Taken from: http://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
+char *trim(char *str)
+{
+	char *end;
+
+	// Trim leading space
+	while(isspace(*str)) str++;
+
+	if(*str == 0)  // All spaces?
+		return str;
+
+	// Trim trailing space
+	end = str + strlen(str) - 1;
+	while(end > str && isspace(*end)) end--;
+
+	// Write new null terminator
+	*(end+1) = 0;
+
+	return str;
+}
+
 int main(int argc, char *argv[])
 {
 	if( argc <= 1 )
@@ -19,6 +41,7 @@ int main(int argc, char *argv[])
 
 #ifdef USE_readline
 	RLData cli;
+	char *cmd;
 #endif
 	char input[1024];			//<- the input string...
 	snprintf(input, 1023, "/proc/%s/mem", argv[1]);
@@ -54,6 +77,34 @@ int main(int argc, char *argv[])
 		);
 	}
 
+	if( !Dict_set(ev.cmd, "quit", (void*)quit) )
+	{
+		Logger_error(
+			ev.log,
+			"Unable to create key '%s': %s\n",
+			"quit",
+			strerror(errno)
+		);
+	}
+	if( !Dict_set(ev.cmd, "scan", (void*)scan) )
+	{
+		Logger_error(
+			ev.log,
+			"Unable to create key '%s': %s\n",
+			"scan",
+			strerror(errno)
+		);
+	}
+	if( !Dict_set(ev.cmd, "print_map", (void*)print_map) )
+	{
+		Logger_error(
+			ev.log,
+			"Unable to create key '%s': %s\n",
+			"print_map",
+			strerror(errno)
+		);
+	}
+
 #ifdef USE_readline
 	Logger_info(
 		ev.log,
@@ -83,14 +134,16 @@ int main(int argc, char *argv[])
 	while( !ev.end )			//<- the event loop, where we will interprete all command
 	{
 #ifdef USE_readline
-		RLData_get(&cli);
+		RLData_get(&cli);		//<- we call readline to get us the command...
 
-		Logger_debug(ev.log, "We've get: '%s'\n", ( cli.line )?cli.line:"^D");
+		cmd = trim(cli.line);		//<- ... we trimmed it...
+
+		Logger_debug(ev.log, "We've get: '%s'\n", ( cmd )?cmd:"^D");
 
 		interpreting(
 				&ev,
-				cli.line
-			    );
+				cmd
+		);				//<- ... and we interprete it.
 #else
 		printf("%s > ", argv[0]);
 		fgets(
