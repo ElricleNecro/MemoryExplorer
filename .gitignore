@@ -31,5 +31,5 @@
 .ycm_extra_conf.pyc
 .ropeproject/
 Makefile
-*.c
 build
+old/
