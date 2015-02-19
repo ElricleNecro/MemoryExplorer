@@ -52,12 +52,13 @@ typedef struct _event {
 
 	Dict cmd;
 
-	callback scan, quit, print_map;
+	callback scan, quit, print_map, print_cmd_dict;
 } Event;
 
 bool scan(Event *ev, char *in);
 bool quit(Event *ev, char *in);
 bool print_map(Event *ev, char *in);
+bool print_cmd_dict(Event *ev, char *in);
 bool interpreting(Event *ev, char *in);
 
 #endif /* end of include guard: HACK_H_326FWU4H */

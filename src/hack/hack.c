@@ -132,17 +132,56 @@ bool print_map(Event *ev, char *in)
 	return true;
 }
 
+void print_elem(Elem item)
+{
+	printf("{\n");
+
+	for(Elem tmp = item; tmp; tmp=tmp->next)
+		printf("\t ('%s', '%p')\n", tmp->key, tmp->item);
+
+	printf("}\n");
+}
+
+bool print_cmd_dict(Event *ev, char *in)
+{
+	(void)in;
+
+	for(unsigned int i = 0; i < ev->cmd->size; i++)
+		if( ev->cmd->array[i] )
+			print_elem(ev->cmd->array[i]);
+
+	return true;
+}
+
+char* first_word(char *str)
+{
+	return str;
+}
+
 // The interpreter loop, take care of her
 bool interpreting(Event *ev, char *input)
 {
+	if( input && *input == '\0' )
+		return true;
+
+#ifdef USE_DICT
+	callback func;
+	if( !input )
+		return ev->quit(ev, input);
+	if( ( func = (callback)Dict_get(ev->cmd, input) ) != NULL )
+		return func(ev, input);
+#else
 	if(!input || !strncmp("quit", input, 4))
 		return ev->quit(ev, input);
 	else if(!strncmp("scan", input, 4))
 		return ev->scan(ev, input);
 	else if(!strncmp("print_map", input, 9))
 		return ev->print_map(ev, input);
+	else if(!strncmp("print_cmd_dict", input, 9))
+		return ev->print_cmd_dict(ev, input);
+#endif
 
-	Logger_error(ev->log, "command (%s) not found.", input);
+	Logger_error(ev->log, "command (%s) not found.\n", input);
 
 	return false;
 }
