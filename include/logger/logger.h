@@ -34,9 +34,9 @@ typedef struct _Logger {
 Logger* Logger_new(FILE *out, enum _Level level);
 void Logger_free(Logger *log);
 
-int Logger_info(Logger *log, const char *str, ...);
-int Logger_error(Logger *log, const char *str, ...);
-int Logger_warn(Logger *log, const char *str, ...);
-int Logger_debug(Logger *log, const char *str, ...);
+int Logger_info(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));
+int Logger_error(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));
+int Logger_warn(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));
+int Logger_debug(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));
 
 #endif /* end of include guard: LOGGER_H_7FKXRP9Q */
