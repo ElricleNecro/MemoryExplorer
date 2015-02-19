@@ -13,6 +13,13 @@ newoption(
 	}
 )
 
+newoption(
+	{
+		trigger="with-dict",
+		description="Use of a dictionnary for the command evaluation.",
+	}
+)
+
 if not _OPTIONS["install-prefix"] then
 	_OPTIONS["install-prefix"] = os.getenv("HOME") .. "/.local/"
 end
@@ -110,6 +117,13 @@ solution("Hacking")
 				"src/hack/maps.c"
 			}
 		)
+
+		configuration("with-dict")
+			defines(
+				{
+					"USE_DICT"
+				}
+			)
 
 		configuration("with-readline")
 			files(
