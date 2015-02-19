@@ -54,7 +54,7 @@ bool RLData_get(RLData *data)
 		data->line = (char *)NULL;	// Without forgetting to put it to NULL.
 	}
 
-	data->line = readline(data->prompt);	// Then we reading user input, letting the function
+	data->line = readline(data->prompt);	// Then we read user input, letting the function
 						// allocating what is needed for the line.
 
 	if( data->line && *data->line )		// Checking if the line has been allocated and is not empty
