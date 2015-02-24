@@ -105,24 +105,26 @@ bool print_map(Event *ev, char *in)
 		"Entering '%s' function\n",
 		__func__
 	);
+
 	for(Maps *zone=ev->mem; zone != NULL; zone=zone->next)
 	{
 		if( zone->type == STACK )
-			printf("Stack from %lxu -> %lxu (%lu)\n", zone->start, zone->end, zone->end - zone->start);
+			printf("Stack from 0x%lx -> 0x%lx (%lu)\n", zone->start, zone->end, zone->end - zone->start);
 		else if( zone->type == HEAP )
-			printf("Heap from %lxu -> %lxu (%lu)\n", zone->start, zone->end, zone->end - zone->start);
+			printf("Heap from 0x%lx -> 0x%lx (%lu)\n", zone->start, zone->end, zone->end - zone->start);
 		else if( zone->type == EXE )
-			printf("Exe from %lxu -> %lxu (%lu)\n", zone->start, zone->end, zone->end - zone->start);
+			printf("Exe from 0x%lx -> 0x%lx (%lu)\n", zone->start, zone->end, zone->end - zone->start);
 		else if( zone->type == CODE )
-			printf("Code from %lxu -> %lxu (%lu)\n", zone->start, zone->end, zone->end - zone->start);
+			printf("Code from 0x%lx -> 0x%lx (%lu)\n", zone->start, zone->end, zone->end - zone->start);
 		if( zone->read == 'r' )
 			printf("\t-> Read permission\n");
-		if( zone->read == 'w' )
+		if( zone->write == 'w' )
 			printf("\t-> Write permission\n");
-		if( zone->read == 'x' )
+		if( zone->exec == 'x' )
 			printf("\t-> Execution permission\n");
 		printf("\t-> %s\n", zone->filename);
 	}
+
 	Logger_debug(
 		ev->log,
 		"Leaving '%s' function\n",
