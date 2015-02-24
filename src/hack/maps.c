@@ -1,5 +1,12 @@
 #include "hack/maps.h"
 
+void to_first_space(char *str)
+{
+	while( !isspace(*str) )
+		str++;
+	*str = '\0';
+}
+
 bool Maps_read(Maps **zone, pid_t pid)
 {
 	FILE* fich = NULL;
@@ -27,6 +34,8 @@ bool Maps_read(Maps **zone, pid_t pid)
 	} else {
 		bin_name[0] = 0;
 	}
+	to_first_space(bin_name);
+	printf("'%s'\n", bin_name);
 
 	while( getline(&line, &lon, fich) != -1 )
 	{
@@ -120,30 +129,6 @@ bool Maps_read(Maps **zone, pid_t pid)
 					(*zone)->type = STACK;
 
 			}
-			/*************************************************************************************************/
-			/* if( regions > 0 ) */
-			/* { */
-				/* if( */
-					/* exec == 'x' || */
-					/* ( */
-						/* strncmp(fname, ) */
-					/* ) */
-				/* ) */
-			/* } */
-			/* if( (*zone)->read == 'r' && (*zone)->write == 'w' && ((*zone)->end - (*zone)->start) > 0 ) */
-			/* { */
-				/* if( !strcmp(fname, "[heap]") ) */
-					/* (*zone)->type = HEAP; */
-				/* else if( !strcmp(fname, "[stack]") ) */
-					/* (*zone)->type = STACK; */
-				/* else if( ( (*zone)->exec == 'x' && fname != '\0' ) && */
-					 /* ( strncmp(fname, exename, NAME_BUF_SIZE) == 0 ) */
-				/* ) */
-				/* { */
-					/* (*zone)->type = EXE; */
-				/* } */
-			/* } */
-			/*************************************************************************************************/
 
 			zone = &(*zone)->next;
 		}
