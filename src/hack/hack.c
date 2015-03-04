@@ -5,14 +5,16 @@
 // If the read is succesful, it will print the result
 bool scan(Event *ev, char *in)
 {
-	size_t offset = 0;
+	char nb_str[128] = {0};
+	long offset = 0;
 	ssize_t bytes_to_read = 4;
 
-	if( sscanf(in, "scan %zd %zd", &offset, &bytes_to_read) < 1 )
+	if( sscanf(in, "scan %s %zd", nb_str, &bytes_to_read) < 1 )
 	{
 		Logger_error(ev->log, "incorrect number of argument.");
 		return false;
 	}
+	offset = strtol(nb_str, NULL, 0);
 	Logger_info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
 	char buf[bytes_to_read];
@@ -157,7 +159,18 @@ bool print_cmd_dict(Event *ev, char *in)
 
 char* first_word(char *str)
 {
-	return str;
+	char *res = NULL;
+	size_t i = 0;
+
+	while( !isspace(str[i]) && str[i] != '\0' )
+		i++;
+
+	if( (res = calloc(i+1, sizeof(char))) == NULL )
+		return NULL;
+
+	strncpy(res, str, i);
+
+	return res;
 }
 
 // The interpreter loop, take care of her
@@ -167,11 +180,26 @@ bool interpreting(Event *ev, char *input)
 		return true;
 
 #ifdef USE_DICT
+	char *cmd = NULL;
+
+	if( input )
+		cmd = first_word(input);
+
+	Logger_debug(ev->log, "Using dictionnary interface.\n");
+	Logger_debug(ev->log, "Searching for command '%s'\n", cmd);
+
 	callback func;
 	if( !input )
+	{
+		free(cmd);
 		return ev->quit(ev, input);
-	if( ( func = (callback)Dict_get(ev->cmd, input) ) != NULL )
+	}
+	if( ( func = (callback)Dict_get(ev->cmd, cmd) ) != NULL )
+	{
+		free(cmd);
 		return func(ev, input);
+	}
+
 #else
 	if(!input || !strncmp("quit", input, 4))
 		return ev->quit(ev, input);
