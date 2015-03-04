@@ -1,0 +1,3 @@
+[submodule ".submodule/LuaAutoC"]
+	path = .submodule/LuaAutoC
+	url = https://github.com/orangeduck/LuaAutoC
