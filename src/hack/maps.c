@@ -34,8 +34,10 @@ bool Maps_read(Maps **zone, pid_t pid)
 	} else {
 		bin_name[0] = 0;
 	}
-	to_first_space(bin_name);
-	printf("'%s'\n", bin_name);
+	fprintf(stderr, "'%s'\n", bin_name);
+	if( bin_name[0] )
+		to_first_space(bin_name);
+	fprintf(stderr, "'%s'\n", bin_name);
 
 	while( getline(&line, &lon, fich) != -1 )
 	{
@@ -139,6 +141,7 @@ bool Maps_read(Maps **zone, pid_t pid)
 	}
 
 	fclose(fich);
+	free(line);
 
 	return true;
 }
@@ -150,6 +153,7 @@ void Maps_free(Maps **zone)
 	{
 		Maps *tmp = actual;
 		actual = tmp->next;
+		free(tmp->filename);
 		free(tmp);
 	}
 }
