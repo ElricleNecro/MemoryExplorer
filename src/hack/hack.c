@@ -3,18 +3,18 @@
 #ifdef USE_PTRACE
 // This function will scan the memory. It takes an argument which is the memory offset to read from the process `ev->pid`.
 // If the read is succesful, it will print the result
-bool scan(Event *ev, char *in)
+bool scan(Event *ev, size_t offset, ssize_t bytes_to_read)
 {
 	char nb_str[128] = {0};
-	long offset = 0;
-	ssize_t bytes_to_read = 4;
+	/* long offset = 0; */
+	/* ssize_t bytes_to_read = 4; */
 
-	if( sscanf(in, "scan %s %zd", nb_str, &bytes_to_read) < 1 )
-	{
-		Logger_error(ev->log, "incorrect number of argument.");
-		return false;
-	}
-	offset = strtol(nb_str, NULL, 0);
+	/* if( sscanf(in, "scan %s %zd", nb_str, &bytes_to_read) < 1 ) */
+	/* { */
+		/* Logger_error(ev->log, "incorrect number of argument."); */
+		/* return false; */
+	/* } */
+	/* offset = strtol(nb_str, NULL, 0); */
 	Logger_info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
 	char buf[bytes_to_read];
@@ -45,16 +45,16 @@ bool scan(Event *ev, char *in)
 	return true;
 }
 #elif defined(USE_vm_readv)
-bool scan(Event *ev, char *in)
+bool scan(Event *ev, size_t offset, ssize_t bytes_to_read)
 {
-	size_t offset = 0;
-	ssize_t bytes_to_read = 4, nread;
+	/* size_t offset = 0; */
+	ssize_t /*bytes_to_read = 4,*/ nread;
 
-	if( sscanf(in, "scan %zd %zd", &offset, &bytes_to_read) < 1 )
-	{
-		Logger_error(ev->log, "incorrect number of argument.");
-		return false;
-	}
+	/* if( sscanf(in, "scan %zd %zd", &offset, &bytes_to_read) < 1 ) */
+	/* { */
+		/* Logger_error(ev->log, "incorrect number of argument."); */
+		/* return false; */
+	/* } */
 	Logger_info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
 	char buf[bytes_to_read];
@@ -93,14 +93,13 @@ bool scan(Event *ev, char *in)
 #endif
 
 // This function allow the user to quit the program
-bool quit(Event *ev, char *in)
+bool quit(Event *ev)
 {
-	(void)in;
-	ev->end = true;
+	ev->quit = true;
 	return true;
 }
 
-bool print_map(Event *ev, char *in)
+bool print_map(Event *ev)
 {
 	Logger_debug(
 		ev->log,
@@ -134,85 +133,5 @@ bool print_map(Event *ev, char *in)
 	);
 
 	return true;
-}
-
-void print_elem(Elem item)
-{
-	printf("{\n");
-
-	for(Elem tmp = item; tmp; tmp=tmp->next)
-		printf("\t ('%s', '%p')\n", tmp->key, tmp->item);
-
-	printf("}\n");
-}
-
-bool print_cmd_dict(Event *ev, char *in)
-{
-	(void)in;
-
-	for(unsigned int i = 0; i < ev->cmd->size; i++)
-		if( ev->cmd->array[i] )
-			print_elem(ev->cmd->array[i]);
-
-	return true;
-}
-
-char* first_word(char *str)
-{
-	char *res = NULL;
-	size_t i = 0;
-
-	while( !isspace(str[i]) && str[i] != '\0' )
-		i++;
-
-	if( (res = calloc(i+1, sizeof(char))) == NULL )
-		return NULL;
-
-	strncpy(res, str, i);
-
-	return res;
-}
-
-// The interpreter loop, take care of her
-bool interpreting(Event *ev, char *input)
-{
-	if( input && *input == '\0' )
-		return true;
-
-#ifdef USE_DICT
-	char *cmd = NULL;
-
-	if( input )
-		cmd = first_word(input);
-
-	Logger_debug(ev->log, "Using dictionnary interface.\n");
-	Logger_debug(ev->log, "Searching for command '%s'\n", cmd);
-
-	callback func;
-	if( !input )
-	{
-		free(cmd);
-		return ev->quit(ev, input);
-	}
-	if( ( func = (callback)Dict_get(ev->cmd, cmd) ) != NULL )
-	{
-		free(cmd);
-		return func(ev, input);
-	}
-
-#else
-	if(!input || !strncmp("quit", input, 4))
-		return ev->quit(ev, input);
-	else if(!strncmp("scan", input, 4))
-		return ev->scan(ev, input);
-	else if(!strncmp("print_map", input, 9))
-		return ev->print_map(ev, input);
-	else if(!strncmp("print_cmd_dict", input, 9))
-		return ev->print_cmd_dict(ev, input);
-#endif
-
-	Logger_error(ev->log, "command (%s) not found.\n", input);
-
-	return false;
 }
 
