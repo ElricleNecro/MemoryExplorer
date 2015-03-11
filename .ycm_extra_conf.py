@@ -88,6 +88,8 @@ flags = [
 '/usr/local/include',
 '-isystem',
 os.path.join(os.getenv("HOME"), '.local/include'),
+'-isystem',
+'.submodule/LuaAutoC'
 ]
 
 
