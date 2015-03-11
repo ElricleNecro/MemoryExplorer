@@ -1,14 +1,17 @@
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
+#include <stdbool.h>
 
-#include "dict/dict.h"
 #include "hack/hack.h"
 #include "logger/logger.h"
+#include "hack/lua_decl.h"
 
 #ifdef USE_readline
 #include "hack/readline.h"
 #endif
+
+static Event ev;
 
 // Taken from: http://stackoverflow.com/questions/122616/how-do-i-trim-leading-trailing-whitespace-in-a-standard-way
 char *trim(char *str)
@@ -34,6 +37,27 @@ char *trim(char *str)
 	return str;
 }
 
+Event* get_event_instance_ptr(lua_State *L)
+{
+	return &ev;
+}
+
+int Event_index(lua_State *L)
+{
+	const char *mname = lua_tostring(L, -1);
+	Event *self = get_event_instance_ptr(L);
+	return luaA_struct_push_member_name(L, Event, mname, self);
+}
+
+int Event_newindex(lua_State *L)
+{
+	const char *mname = lua_tostring(L, -2);
+	printf("%s\n", mname);
+	Event *self = get_event_instance_ptr(L);
+	luaA_struct_to_member_name(L, Event, mname, self, -1);
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	if( argc <= 1 )
@@ -42,81 +66,67 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
+	bool error = false;
 #ifdef USE_readline
 	RLData cli;
-	char *cmd;
+	/* char *cmd; */
 #endif
 	char input[1024];			//<- the input string...
 	snprintf(input, 1023, "/proc/%s/mem", argv[1]);
 
-	Event ev = {
-		.pid = atoi(argv[1]),		//<- pid of the process to read
-		.mem_fd = open(
-			input,
-			O_RDWR
-		),				//<- pid memory file
-		.log = Logger_new(stderr, ALL),
-		.mem = NULL,			//<- memory map
-		.end = false,			//<- we do not want to terminate the program right now
-		.cmd = NULL,
-		.quit = quit,
-		.scan = scan,
-		.print_map = print_map,
-		.print_cmd_dict = print_cmd_dict,
-	};					//<- an event structure: will contain each callback action
+	lua_State *L = lua_Init();
 
-	Logger_info(
-		ev.log,
-		"Creating dictionnary.\n"
+	ev.pid = atoi(argv[1]);		//<- pid of the process to read
+	ev.mem_fd = open(
+		input,
+		O_RDWR
+	);				//<- pid memory file
+	ev.log = Logger_new(stderr, ALL);
+	ev.mem = NULL;			//<- memory map
+	ev.quit = false;		//<- we do not want to terminate the program right now
+	ev._addr = (unsigned long)&ev;
+
+	lua_register(L, "Event_index", Event_index);
+	lua_register(L, "Event_newindex", Event_newindex);
+
+	luaL_dostring(
+		L,
+		"Event = {}\n"
+		"setmetatable(Event, Event)\n"
+		"function Event.__call()\n"
+		"  local self = {}\n"
+		"  setmetatable(self, Event)\n"
+		"  return self\n"
+		"end\n"
+		"Event.__index = Event_index\n"
+		"Event.__newindex = Event_newindex\n"
+		"\n"
+		"ev = Event()\n"
 	);
 
-	;
+	luaL_dostring(
+		L,
+		"function Lquit()\n"
+		"  ev.quit = true\n"
+		"end\n"
+	);
 
-	if( (ev.cmd = Dict_new(DEF_DICT_SIZE)) == NULL )
-	{
-		Logger_error(
-			ev.log,
-			"Unable to create dictionnary: %s\n",
-			strerror(errno)
-		);
-	}
-
-	if( !Dict_set(ev.cmd, "quit", (void*)quit) )
-	{
-		Logger_error(
-			ev.log,
-			"Unable to create key '%s': %s\n",
-			"quit",
-			strerror(errno)
-		);
-	}
-	if( !Dict_set(ev.cmd, "scan", (void*)scan) )
-	{
-		Logger_error(
-			ev.log,
-			"Unable to create key '%s': %s\n",
-			"scan",
-			strerror(errno)
-		);
-	}
-	if( !Dict_set(ev.cmd, "print_map", (void*)print_map) )
-	{
-		Logger_error(
-			ev.log,
-			"Unable to create key '%s': %s\n",
-			"print_map",
-			strerror(errno)
-		);
-	}
-	if( !Dict_set(ev.cmd, "print_cmd_dict", (void*)print_cmd_dict) )
-	{
-		Logger_error(
-			ev.log,
-			"Unable to create key '%s': %s\n",
-			"print_cmd_dict",
-			strerror(errno)
-		);
-	}
+	error = luaL_dostring(
+		L,
+		"CBind = {}\n"
+		"setmetatable(CBind, CBind)\n"
+		"function CBind.__call()\n"
+		"    local self = {}\n"
+		"    setmetatable(self, CBind)\n"
+		"    return self\n"
+		"end\n"
+		"CBind.__index = function(table, key)\n"
+		"    return function (...)\n"
+		"        return C_call(key, ...)\n"
+		"    end\n"
+		"end\n"
+		"C = CBind()\n"
+	);
 
 #ifdef USE_readline
 	Logger_info(
@@ -144,21 +154,32 @@ int main(int argc, char *argv[])
 		"Beginning loop.\n"
 	);
 
-	while( !ev.end )			//<- the event loop, where we will interprete all command
+	while( !ev.quit )			//<- the event loop, where we will interprete all command
 	{
 #ifdef USE_readline
 		RLData_get(&cli);		//<- we call readline to get us the command...
 
-		cmd = trim(cli.line);		//<- ... we trimmed it...
+		/* cmd = trim(cli.line);		//<- ... we trimmed it... */
 
 		Logger_debug(ev.log, "We've get: '%s'\n", ( cli.line )?cli.line:"^D");
 
-		/* if( *cmd )			//<- (we are ignoring empty string) */
-		interpreting(
-			&ev,
-			cmd
-		);				//<- ... and we interprete it.
+		if( !cli.line )
+		{
+			ev.quit = true;
+			continue;
+		}
+
+		error = luaL_loadbuffer(L, cli.line, strlen(cli.line), "line") || lua_pcall(L, 0, 0, 0);
+		if (error) {
+			Logger_error(
+				ev.log,
+				"LUA error: '%s'.\n",
+				lua_tostring(L, -1)
+			);
+			lua_pop(L, 1);  /* pop error message from the stack */
+		}
 #else
+#warning "Building without readline."
 		printf("%s > ", argv[0]);
 		fgets(
 			input,
@@ -167,10 +188,15 @@ int main(int argc, char *argv[])
 		);				//<- we read stdin for commands...
 		if(input[strlen(input) - 1] == '\n')
 			input[strlen(input) - 1] = '\0';
-		interpreting(
-			&ev,
-			input
-		);//<- ... and interprete them.
+		error = luaL_loadbuffer(L, input, strlen(input), "line") || lua_pcall(L, 0, 0, 0);
+		if (error) {
+			Logger_error(
+				ev.log,
+				"LUA error: '%s'.\n",
+				lua_tostring(L, -1)
+			);
+			lua_pop(L, 1);  /* pop error message from the stack */
+		}
 #endif
 	}
 
@@ -180,7 +206,6 @@ int main(int argc, char *argv[])
 
 	RLData_free(&cli);
 #endif
-	Dict_free(ev.cmd);
 	Maps_free(&ev.mem);
 	Logger_free(ev.log);
 
