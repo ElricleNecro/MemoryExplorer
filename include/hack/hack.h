@@ -48,17 +48,13 @@ typedef struct _event {
 	Maps *mem;
 	Logger *log;
 
-	bool end;
+	bool quit;
 
-	Dict cmd;
-
-	callback scan, quit, print_map, print_cmd_dict;
+	unsigned long _addr;
 } Event;
 
-bool scan(Event *ev, char *in);
-bool quit(Event *ev, char *in);
-bool print_map(Event *ev, char *in);
-bool print_cmd_dict(Event *ev, char *in);
-bool interpreting(Event *ev, char *in);
+bool scan(Event *ev, size_t offset, ssize_t bytes_to_read);
+bool quit(Event *ev);
+bool print_map(Event *ev);
 
 #endif /* end of include guard: HACK_H_326FWU4H */
