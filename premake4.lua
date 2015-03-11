@@ -13,13 +13,6 @@ newoption(
 	}
 )
 
-newoption(
-	{
-		trigger="with-dict",
-		description="Use of a dictionnary for the command evaluation.",
-	}
-)
-
 if not _OPTIONS["install-prefix"] then
 	_OPTIONS["install-prefix"] = os.getenv("HOME") .. "/.local/"
 end
@@ -61,7 +54,8 @@ solution("Hacking")
 
 	includedirs(
 		{
-			"include/"
+			"include/",
+			".submodule/LuaAutoC/"
 		}
 	)
 
@@ -78,28 +72,16 @@ solution("Hacking")
 			}
 		)
 
-	project("dict")
+	project("LuaAutoC")
 		language("C")
-		kind("SharedLib")
+		kind("StaticLib")
 
 		location("build/lib")
 		targetdir("build/lib")
 
 		files(
 			{
-				"src/dict/*.c"
-			}
-		)
-
-		defines(
-			{
-				"_XOPEN_SOURCE"
-			}
-		)
-
-		links(
-			{
-				"m",
+				".submodule/LuaAutoC/lautoc.c"
 			}
 		)
 
@@ -114,16 +96,10 @@ solution("Hacking")
 			{
 				"src/hack/hack.c",
 				"src/hack/main.c",
-				"src/hack/maps.c"
+				"src/hack/maps.c",
+				"src/hack/lua_decl.c"
 			}
 		)
-
-		configuration("with-dict")
-			defines(
-				{
-					"USE_DICT"
-				}
-			)
 
 		configuration("with-readline")
 			files(
@@ -149,8 +125,11 @@ solution("Hacking")
 
 		links(
 			{
+				"LuaAutoC",
 				"logger",
-				"dict"
+				"dict",
+				"lua",
+				"m"
 			}
 		)
 
