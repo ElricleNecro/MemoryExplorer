@@ -10,8 +10,8 @@ int main(void)
 	*d = 5.;
 
 	fprintf(stderr, "(%d) need a=%d to stop!\n", getpid(), stop);
-	fprintf(stderr, "%p, %p\n", &stop, &a);
-	fprintf(stderr, "%p, %p, %g\n", &d, d, *d);
+	fprintf(stderr, "&stop = %p, &a = %p\n", &stop, &a);
+	fprintf(stderr, "&d = %p, d = %p, *d = %g\n", &d, d, *d);
 
 	while(a != stop) sleep(1);
 
