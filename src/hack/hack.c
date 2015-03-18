@@ -3,9 +3,9 @@
 #ifdef USE_PTRACE
 // This function will scan the memory. It takes an argument which is the memory offset to read from the process `ev->pid`.
 // If the read is succesful, it will print the result
-bool scan(Event *ev, size_t offset, ssize_t bytes_to_read)
+bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 {
-	char nb_str[128] = {0};
+	/* char nb_str[128] = {0}; */
 	/* long offset = 0; */
 	/* ssize_t bytes_to_read = 4; */
 
@@ -17,7 +17,17 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read)
 	/* offset = strtol(nb_str, NULL, 0); */
 	Logger_info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
-	char buf[bytes_to_read];
+	/* char buf[bytes_to_read]; */
+	char *buf = NULL;
+	if( (buf = malloc(bytes_to_read * sizeof(char))) == NULL )
+	{
+		Logger_error(
+			ev->log,
+			"Allocation error: '%s'\n",
+			strerror(errno)
+		);
+		return false;
+	}
 
 	ptrace(
 		PTRACE_ATTACH,
@@ -30,8 +40,18 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read)
 	/* lseek(ev->mem_fd, offset, SEEK_SET); */
 	/* read(ev->mem_fd, buf, bytes_to_read); */
 	pread(ev->mem_fd, buf, bytes_to_read, offset);
+	fprintf(stderr, "%ld\n",
+		~ptrace(
+			PTRACE_PEEKDATA,
+			ev->pid,
+			offset,
+			NULL
+		) + 1
+	);
 
-	Logger_info(ev->log, "%d\n", *((int*)buf));
+#define cad(var) ((~var) + 1)
+
+	Logger_info(ev->log, "Value as int: '%d'\n", cad( *((int*)buf) ));
 
 	ptrace(
 		PTRACE_DETACH,
@@ -40,12 +60,14 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read)
 		NULL
 	);
 
+	*(char**)out = buf;
+
 	/* ptrace(PTRACE_POKEDATA, ev->pid, ) */
 
 	return true;
 }
 #elif defined(USE_vm_readv)
-bool scan(Event *ev, size_t offset, ssize_t bytes_to_read)
+bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 {
 	/* size_t offset = 0; */
 	ssize_t /*bytes_to_read = 4,*/ nread;

@@ -53,7 +53,7 @@ typedef struct _event {
 	unsigned long _addr;
 } Event;
 
-bool scan(Event *ev, size_t offset, ssize_t bytes_to_read);
+bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out);
 bool quit(Event *ev);
 bool print_map(Event *ev);
 
