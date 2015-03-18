@@ -52,7 +52,6 @@ int Event_index(lua_State *L)
 int Event_newindex(lua_State *L)
 {
 	const char *mname = lua_tostring(L, -2);
-	printf("%s\n", mname);
 	Event *self = get_event_instance_ptr(L);
 	luaA_struct_to_member_name(L, Event, mname, self, -1);
 	return 0;
@@ -180,7 +179,7 @@ int main(int argc, char *argv[])
 		}
 #else
 #warning "Building without readline."
-		printf("%s > ", argv[0]);
+		printf("%s (norl) > ", argv[0]);
 		fgets(
 			input,
 			1023,
