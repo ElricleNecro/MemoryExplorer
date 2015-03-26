@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "Parser.h"
+
 #include "hack/hack.h"
 #include "logger/logger.h"
 #include "hack/lua_decl.h"
@@ -57,13 +59,50 @@ int Event_newindex(lua_State *L)
 	return 0;
 }
 
-int main(int argc, char *argv[])
+int do_child(int argc, char **argv)
 {
-	if( argc <= 1 )
+	// We are preparing the arguments:
+	char *args[argc + 1];
+	memcpy(args, argv, argc*sizeof(char*));
+	args[argc] = NULL;		// The array must be NULL terminated.
+
+	ptrace(PTRACE_TRACEME);		// We are nofying the system we want to be ptraced!
+
+	kill(getpid(), SIGSTOP);	// We are sending ourself a SIGSTOP to allow the parent process to continue.
+
+	return execvp(args[0], args);	// We launch the command, which will replace the child process.
+}
+
+int main(int argc, const char **argv)
+{
+	pid_t pid = 0;
+	Args *args = Args_New();
+	Args_Error err;
+
+	Args_Add(args, "-p", NULL, T_INT, &pid, "Pid to read from.");
+
+	err = Args_Parse(args, argc, argv);
+	if( err == TREAT_ERROR )
 	{
-		fprintf(stderr, "Call must be: %s (PID)\n", argv[0]);
+		Args_Free(args);
 		return EXIT_FAILURE;
 	}
+	else if( err == HELP )
+	{
+		Args_Free(args);
+		return EXIT_SUCCESS;
+	}
+
+	const char *prog = NULL;
+	if( args->rest && pid == 0)
+	{
+		prog = args->rest->opt;
+		pid = fork();
+		if( pid == 0 )
+			return do_child(argc - 1, argv + 1);
+		printf("Pid: '%d'\n", pid);
+	}
+		printf("Pid: '%d'\n", pid);
 
 	bool error = false;
 #ifdef USE_readline
@@ -71,11 +110,11 @@ int main(int argc, char *argv[])
 	/* char *cmd; */
 #endif
 	char input[1024];			//<- the input string...
-	snprintf(input, 1023, "/proc/%s/mem", argv[1]);
+	snprintf(input, 1023, "/proc/%d/mem", pid);
 
 	lua_State *L = lua_Init();
 
-	ev.pid = atoi(argv[1]);		//<- pid of the process to read
+	ev.pid = pid;		//<- pid of the process to read
 	ev.mem_fd = open(
 		input,
 		O_RDWR
