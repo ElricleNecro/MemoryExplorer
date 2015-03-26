@@ -66,7 +66,7 @@ int Mylua_Scan(lua_State *L)
 		2,
 		lua_tostring(L, 2)
 	);
-	addr = luaL_checknumber(L, 2);
+	addr = luaL_checklong(L, 2);
 
 	/* if( !lua_isnumber(L, 3) ) */
 	/* { */
@@ -81,7 +81,7 @@ int Mylua_Scan(lua_State *L)
 		3,
 		lua_tostring(L, 3)
 	);
-	to_read = luaL_checknumber(L, 3);
+	to_read = luaL_checklong(L, 3);
 
 	Logger_debug(
 		ev->log,
@@ -104,13 +104,13 @@ int Mylua_Scan(lua_State *L)
 	str = luaL_checkstring(L, 4);
 
 	if( strcmp(str, "int") )
-		lua_pushnumber(L, (lua_Number)*(int*)out);
+		lua_pushinteger(L, *(int*)out);
 	else if( strcmp(str, "long") )
-		lua_pushnumber(L, (lua_Number)*(long*)out);
+		lua_pushinteger(L, *(long*)out);
 	else if( strcmp(str, "float") )
-		lua_pushnumber(L, (lua_Number)*(float*)out);
+		lua_pushnumber(L, *(float*)out);
 	else if( strcmp(str, "double") )
-		lua_pushnumber(L, (lua_Number)*(double*)out);
+		lua_pushnumber(L, *(double*)out);
 
 	free(out);
 
