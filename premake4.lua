@@ -55,7 +55,8 @@ solution("Hacking")
 	includedirs(
 		{
 			"include/",
-			".submodule/LuaAutoC/"
+			".submodule/LuaAutoC/",
+			".submodule/ParseArgsC/include/"
 		}
 	)
 
@@ -69,6 +70,19 @@ solution("Hacking")
 		files(
 			{
 				"src/logger/*.c"
+			}
+		)
+
+	project("ParseArgsC")
+		language("C")
+		kind("SharedLib")
+
+		location("build/lib")
+		targetdir("build/lib")
+
+		files(
+			{
+				".submodule/ParseArgsC/src/Parser.c"
 			}
 		)
 
@@ -125,6 +139,7 @@ solution("Hacking")
 
 		links(
 			{
+				"ParseArgsC",
 				"LuaAutoC",
 				"logger",
 				"dict",
