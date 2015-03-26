@@ -89,7 +89,9 @@ flags = [
 '-isystem',
 os.path.join(os.getenv("HOME"), '.local/include'),
 '-isystem',
-'.submodule/LuaAutoC'
+'.submodule/LuaAutoC',
+'-isystem',
+'.submodule/ParseArgsC/include'
 ]
 
 
