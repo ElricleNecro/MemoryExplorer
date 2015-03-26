@@ -53,13 +53,6 @@ int Mylua_Scan(lua_State *L)
 
 	luaA_to_pEvent(L, luaA_type_find(L, "pEvent"), &ev, 1);
 
-	/* if( !lua_isnumber(L, 2) ) */
-	/* { */
-		/* lua_pushstring(L, "Incorrect argument type"); */
-		/* lua_error(L); */
-
-		/* return 0; */
-	/* } */
 	Logger_debug(
 		ev->log,
 		"Arg %d: '%s'",
@@ -68,13 +61,6 @@ int Mylua_Scan(lua_State *L)
 	);
 	addr = luaL_checklong(L, 2);
 
-	/* if( !lua_isnumber(L, 3) ) */
-	/* { */
-		/* lua_pushstring(L, "Incorrect argument type"); */
-		/* lua_error(L); */
-
-		/* return 0; */
-	/* } */
 	Logger_debug(
 		ev->log,
 		"Arg %d: '%s'",
