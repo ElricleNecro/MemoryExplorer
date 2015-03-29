@@ -1,8 +1,9 @@
 #include "hack/lua_decl.h"
 
+// Converting a pid_t type into a lua integer:
 static int luaA_push_pid_t(lua_State *L, luaA_Type t, const void *c_in)
 {
-	pid_t *p = (pid_t*)c_in;
+	const pid_t *p = (const pid_t*)c_in;
 
 	lua_pushinteger(L, *p);
 
@@ -10,6 +11,7 @@ static int luaA_push_pid_t(lua_State *L, luaA_Type t, const void *c_in)
 	(void)t;
 }
 
+// Converting a lua integer into a pid_t type:
 static void luaA_to_pid_t(lua_State *L, luaA_Type t, void *c_out, int index)
 {
 	pid_t *p = (pid_t*)c_out;
@@ -19,6 +21,7 @@ static void luaA_to_pid_t(lua_State *L, luaA_Type t, void *c_out, int index)
 	(void)t;
 }
 
+// Get the pointer to the wanted instance of the event structure:
 static void luaA_to_pEvent(lua_State *L, luaA_Type t, void *c_out, int index)
 {
 	Event **p = (Event**)c_out;
@@ -55,7 +58,7 @@ int Mylua_Scan(lua_State *L)
 
 	Logger_debug(
 		ev->log,
-		"Arg %d: '%s'",
+		"Arg %d: '%s'\n",
 		2,
 		lua_tostring(L, 2)
 	);
@@ -63,7 +66,7 @@ int Mylua_Scan(lua_State *L)
 
 	Logger_debug(
 		ev->log,
-		"Arg %d: '%s'",
+		"Arg %d: '%s'\n",
 		3,
 		lua_tostring(L, 3)
 	);
@@ -89,14 +92,42 @@ int Mylua_Scan(lua_State *L)
 
 	str = luaL_checkstring(L, 4);
 
-	if( strcmp(str, "int") )
+	if( !strcmp(str, "int") )
+	{
+		Logger_debug(
+			ev->log,
+			"Representation as int: '%d'\n",
+			*(int*)out
+		);
 		lua_pushinteger(L, *(int*)out);
-	else if( strcmp(str, "long") )
+	}
+	else if( !strcmp(str, "long") )
+	{
+		Logger_debug(
+			ev->log,
+			"Representation as long: '%ld'\n",
+			*(long*)out
+		);
 		lua_pushinteger(L, *(long*)out);
-	else if( strcmp(str, "float") )
+	}
+	else if( !strcmp(str, "float") )
+	{
+		Logger_debug(
+			ev->log,
+			"Representation as float: '%g'\n",
+			*(float*)out
+		);
 		lua_pushnumber(L, *(float*)out);
-	else if( strcmp(str, "double") )
+	}
+	else if( !strcmp(str, "double") )
+	{
+		Logger_debug(
+			ev->log,
+			"Representation as double: '%g'\n",
+			*(double*)out
+		);
 		lua_pushnumber(L, *(double*)out);
+	}
 
 	free(out);
 
