@@ -11,6 +11,7 @@ int main(void)
 
 	fprintf(stderr, "(%d) need a=%d to stop!\n", getpid(), stop);
 	fprintf(stderr, "&stop = %p, &a = %p\n", &stop, &a);
+	fprintf(stderr, "stop = %d, a = %d\n", stop, a);
 	fprintf(stderr, "&d = %p, d = %p, *d = %g\n", &d, d, *d);
 
 	while(a != stop) sleep(1);
