@@ -13,6 +13,13 @@ newoption(
 	}
 )
 
+newoption(
+	{
+		trigger="with-readv",
+		description="Use of process_vm_readv instead of ptrace to read memory.",
+	}
+)
+
 if not _OPTIONS["install-prefix"] then
 	_OPTIONS["install-prefix"] = os.getenv("HOME") .. "/.local/"
 end
@@ -114,6 +121,13 @@ solution("Hacking")
 				"src/hack/lua_decl.c"
 			}
 		)
+
+		configuration("with-readv")
+			defines(
+				{
+					"USE_vm_readv"
+				}
+			)
 
 		configuration("with-readline")
 			files(
