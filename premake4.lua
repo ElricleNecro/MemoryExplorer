@@ -67,6 +67,19 @@ solution("Hacking")
 		}
 	)
 
+	project("dict")
+		language("C")
+		kind("SharedLib")
+
+		location("build/lib")
+		targetdir("build/lib")
+
+		files(
+			{
+				"src/dict/*.c"
+			}
+		)
+
 	project("logger")
 		language("C")
 		kind("SharedLib")
