@@ -44,13 +44,17 @@ Event* get_event_instance_ptr(lua_State *L)
 	return &ev;
 }
 
+// Call when accessing a field:
 int Event_index(lua_State *L)
 {
 	const char *mname = lua_tostring(L, -1);
+	/* lua_getfield(L, -1, "_id"); */
+	/* printf("Field address: %d\n", lua_tointeger(L, -1)); */
 	Event *self = get_event_instance_ptr(L);
 	return luaA_struct_push_member_name(L, Event, mname, self);
 }
 
+// Call when setting a field:
 int Event_newindex(lua_State *L)
 {
 	const char *mname = lua_tostring(L, -2);
@@ -59,16 +63,16 @@ int Event_newindex(lua_State *L)
 	return 0;
 }
 
-int do_child(int argc, char **argv)
+int do_child(int argc, const char **argv)
 {
 	// We are preparing the arguments:
 	char *args[argc + 1];
 	memcpy(args, argv, argc*sizeof(char*));
 	args[argc] = NULL;		// The array must be NULL terminated.
 
-	ptrace(PTRACE_TRACEME);		// We are nofying the system we want to be ptraced!
+	/* ptrace(PTRACE_TRACEME);		// We are nofying the system we want to be ptraced! */
 
-	kill(getpid(), SIGSTOP);	// We are sending ourself a SIGSTOP to allow the parent process to continue.
+	/* kill(getpid(), SIGSTOP);	// We are sending ourself a SIGSTOP to allow the parent process to continue. */
 
 	return execvp(args[0], args);	// We launch the command, which will replace the child process.
 }
@@ -93,16 +97,13 @@ int main(int argc, const char **argv)
 		return EXIT_SUCCESS;
 	}
 
-	const char *prog = NULL;
 	if( args->rest && pid == 0)
 	{
-		prog = args->rest->opt;
 		pid = fork();
 		if( pid == 0 )
 			return do_child(argc - 1, argv + 1);
-		printf("Pid: '%d'\n", pid);
 	}
-		printf("Pid: '%d'\n", pid);
+	/* ptrace(PTRACE_CONT, pid, NULL, NULL); */
 
 	bool error = false;
 #ifdef USE_readline
@@ -141,6 +142,11 @@ int main(int argc, const char **argv)
 		"\n"
 		"ev = Event()\n"
 	);
+
+	/* lua_getglobal(L, "ev"); */
+	/* lua_pushinteger(L, (long)&ev); */
+	/* lua_setfield(L, -2, "_id"); */
+	/* lua_remove(L, -1); */
 
 	luaL_dostring(
 		L,
