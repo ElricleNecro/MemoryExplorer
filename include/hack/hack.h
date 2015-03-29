@@ -16,6 +16,8 @@
 	#include <sys/uio.h>
 #endif
 
+#include <byteswap.h>
+
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -37,6 +39,10 @@
 #ifndef ERROR
 	#define ERROR(str, ...) fprintf(stderr, "\033[31mError\033[00m: "str"\n", ##__VA_ARGS__)
 #endif
+
+// two's complement:
+#define cad(var) ((~var) + 1)
+
 
 struct _event;
 
