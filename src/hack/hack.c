@@ -1,23 +1,27 @@
 #include "hack/hack.h"
 
+#if defined(__APPLE__) && defined(__MACH__)
+static inline unsigned short bswap_16(unsigned short x) {
+	return (x>>8) | (x<<8);
+}
+
+static inline unsigned int bswap_32(unsigned int x) {
+	return (bswap_16(x&0xffff)<<16) | (bswap_16(x>>16));
+}
+
+static inline unsigned long long bswap_64(unsigned long long x) {
+	return (((unsigned long long)bswap_32(x&0xffffffffull))<<32) |
+		(bswap_32(x>>32));
+}
+#endif
+
 #ifdef USE_PTRACE
 // This function will scan the memory. It takes an argument which is the memory offset to read from the process `ev->pid`.
 // If the read is succesful, it will print the result
 bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 {
-	/* char nb_str[128] = {0}; */
-	/* long offset = 0; */
-	/* ssize_t bytes_to_read = 4; */
-
-	/* if( sscanf(in, "scan %s %zd", nb_str, &bytes_to_read) < 1 ) */
-	/* { */
-		/* Logger_error(ev->log, "incorrect number of argument."); */
-		/* return false; */
-	/* } */
-	/* offset = strtol(nb_str, NULL, 0); */
 	Logger_info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
-	/* char buf[bytes_to_read]; */
 	char *buf = NULL;
 	if( (buf = malloc(bytes_to_read * sizeof(char))) == NULL )
 	{
@@ -66,11 +70,9 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 	);
 
 	Logger_info(ev->log, "Value as int (2complements): '%d'\n", cad( *((int*)( (void*)buf )) ));
-#if defined(__linux__) || ( defined(__APPLE__) && defined(__MACH__) )
 	Logger_info(ev->log, "Value as int (bswap64): '%d'\n", bswap_64( *((int*)( (void*)buf )) ));
 	Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", cad( bswap_64( *((int*)( (void*)buf )) ) ));
 	Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", bswap_64( cad( *((int*)( (void*)buf )) ) ));
-#endif
 
 	ptrace(
 		PTRACE_DETACH,
@@ -113,12 +115,12 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 	remote.iov_len  = bytes_to_read;
 
 	nread = process_vm_readv(
-			ev->pid,
-			&local,
-			1,
-			&remote,
-			1,
-			0
+		ev->pid,
+		&local,
+		1,
+		&remote,
+		1,
+		0
 	);
 
 	if( nread != bytes_to_read )
@@ -132,11 +134,9 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 	}
 
 	Logger_info(ev->log, "Value as int (2complements): '%d'\n", cad( *((int*)( (void*)buf )) ));
-#if defined(__linux__) || ( defined(__APPLE__) && defined(__MACH__) )
 	Logger_info(ev->log, "Value as int (bswap64): '%d'\n", bswap_64( *((int*)( (void*)buf )) ));
 	Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", cad( bswap_64( *((int*)( (void*)buf )) ) ));
 	Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", bswap_64( cad( *((int*)( (void*)buf )) ) ));
-#endif
 
 	*(char**)out = buf;
 
