@@ -2,8 +2,10 @@
 
 void to_first_space(char *str)
 {
-	while( !isspace(*str) )
+	while( !isspace(*str) && *str != '\0' )
+	{
 		str++;
+	}
 	*str = '\0';
 }
 
@@ -35,8 +37,9 @@ bool Maps_read(Maps **zone, pid_t pid)
 		bin_name[0] = 0;
 	}
 	fprintf(stderr, "'%s'\n", bin_name);
+
 	if( bin_name[0] )
-		to_first_space(bin_name);
+		to_first_space(&bin_name[0]);
 	fprintf(stderr, "'%s'\n", bin_name);
 
 	while( getline(&line, &lon, fich) != -1 )
