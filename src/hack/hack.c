@@ -41,38 +41,27 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 	);
 
 	waitpid(ev->pid, NULL, 0);
-	/* lseek(ev->mem_fd, offset, SEEK_SET); */
-	/* read(ev->mem_fd, buf, bytes_to_read); */
-	pread(ev->mem_fd, buf, bytes_to_read, offset);
-	fprintf(stderr, "ptrace %ld\n",
-		ptrace(
-			PTRACE_PEEKDATA,
-			ev->pid,
-			offset,
-			NULL
-		)
-	);
-	fprintf(stderr, "ptrace %g\n",
-		ptrace(
-			PTRACE_PEEKDATA,
-			ev->pid,
-			offset,
-			NULL
-		)
-	);
-	fprintf(stderr, "Complement avec ptrace %ld\n",
-		~ptrace(
-			PTRACE_PEEKDATA,
-			ev->pid,
-			offset,
-			NULL
-		) + 1
-	);
 
-	Logger_info(ev->log, "Value as int (2complements): '%d'\n", cad( *((int*)( (void*)buf )) ));
-	Logger_info(ev->log, "Value as int (bswap64): '%d'\n", bswap_64( *((int*)( (void*)buf )) ));
-	Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", cad( bswap_64( *((int*)( (void*)buf )) ) ));
-	Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", bswap_64( cad( *((int*)( (void*)buf )) ) ));
+#ifdef USE_PURE_PTRACE
+	char *ptr = buf;
+
+	for(int i = 0; i < bytes_to_read; i+=sizeof(long),ptr+=sizeof(long))
+	{
+		*ptr = ptrace(
+			PTRACE_PEEKDATA,
+			ev->pid,
+			offset,
+			NULL
+		);
+
+		printf("%d -- before: %d (read %d -- %d)\n", i, bytes_to_read, (int)*ptr, *ptr);
+	}
+#elif defined(USE_lseek_read)
+	lseek(ev->mem_fd, offset, SEEK_SET);
+	read(ev->mem_fd, buf, bytes_to_read);
+#else
+	pread(ev->mem_fd, buf, bytes_to_read, offset);
+#endif
 
 	ptrace(
 		PTRACE_DETACH,
