@@ -66,9 +66,11 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 	);
 
 	Logger_info(ev->log, "Value as int (2complements): '%d'\n", cad( *((int*)( (void*)buf )) ));
+#if defined(__linux__) || ( defined(__APPLE__) && defined(__MACH__) )
 	Logger_info(ev->log, "Value as int (bswap64): '%d'\n", bswap_64( *((int*)( (void*)buf )) ));
 	Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", cad( bswap_64( *((int*)( (void*)buf )) ) ));
 	Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", bswap_64( cad( *((int*)( (void*)buf )) ) ));
+#endif
 
 	ptrace(
 		PTRACE_DETACH,
@@ -130,9 +132,11 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 	}
 
 	Logger_info(ev->log, "Value as int (2complements): '%d'\n", cad( *((int*)( (void*)buf )) ));
+#if defined(__linux__) || ( defined(__APPLE__) && defined(__MACH__) )
 	Logger_info(ev->log, "Value as int (bswap64): '%d'\n", bswap_64( *((int*)( (void*)buf )) ));
 	Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", cad( bswap_64( *((int*)( (void*)buf )) ) ));
 	Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", bswap_64( cad( *((int*)( (void*)buf )) ) ));
+#endif
 
 	*(char**)out = buf;
 
