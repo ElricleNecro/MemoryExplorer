@@ -1,9 +1,9 @@
 #include "logger/logger.h"
 
-static const char *def_error = "\033[31m[ERROR]\033[00m ";
-static const char *def_warn = "\033[33m[WARNING]\033[00m ";
-static const char *def_debug = "\033[36m[DEBUG]\033[00m ";
-static const char *def_info = "\033[32m[INFO]\033[00m ";
+static char *def_error = "\033[31m[ERROR]\033[00m ";
+static char *def_warn = "\033[33m[WARNING]\033[00m ";
+static char *def_debug = "\033[36m[DEBUG]\033[00m ";
+static char *def_info = "\033[32m[INFO]\033[00m ";
 
 Logger* Logger_new(FILE *out, enum _Level level)
 {
