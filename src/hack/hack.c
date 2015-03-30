@@ -86,14 +86,8 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 #elif defined(USE_vm_readv)
 bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 {
-	/* size_t offset = 0; */
-	ssize_t /*bytes_to_read = 4,*/ nread;
+	ssize_t nread;
 
-	/* if( sscanf(in, "scan %zd %zd", &offset, &bytes_to_read) < 1 ) */
-	/* { */
-		/* Logger_error(ev->log, "incorrect number of argument."); */
-		/* return false; */
-	/* } */
 	Logger_info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
 	char *buf = NULL;
@@ -133,13 +127,6 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 			strerror(errno)
 		);
 		return false;
-		/* if( errno == 1 ) */
-			/* Logger_error(ev->log, "operation not permitted"); */
-		/* else if( errno == 14 ) */
-			/* Logger_error(ev->log, "BAD ADDRESS"); */
-		/* else */
-			/* Logger_error(ev->log, "read %zd instead of %zu. Error code %d", nread, bytes_to_read, errno); */
-		/* return false; */
 	}
 
 	Logger_info(ev->log, "Value as int (2complements): '%d'\n", cad( *((int*)( (void*)buf )) ));
