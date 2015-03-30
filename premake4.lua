@@ -20,23 +20,50 @@ newoption(
 	}
 )
 
+newoption {
+	trigger     = "ptrace-use",
+	value       = "USE",
+	description = "Choose what to use to read memory with ptrace.",
+	allowed = {
+		{ "pure",   "Pure ptrace call." },
+		{ "lseek",  "A combination of lseek and read in the mem file (Linux Only)." },
+		{ "pread",  "Use of pread to read the mem file (Linux Only)." }
+	}
+}
+
 if not _OPTIONS["install-prefix"] then
 	_OPTIONS["install-prefix"] = os.getenv("HOME") .. "/.local/"
+end
+
+if not _OPTIONS["ptrace-use"] then
+	_OPTIONS["ptrace-use"] = "pure"
+end
+
+if _OPTIONS["ptrace-use"] == "pure" then
+	define_ptrace = "USE_PURE_PTRACE"
+elseif _OPTIONS["ptrace-use"] == "lseek" then
+	define_ptrace = "USE_lseek_read"
+else
+	define_ptrace = "USE_pread"
 end
 
 solution("Hacking")
 	configurations({"debug", "release"})
 		buildoptions(
 			{
-				"-std=c99",
-				"-I include/",
-				"-D_GNU_SOURCE"
+				"-std=c99"
 			}
 		)
 
 		flags(
 			{
 				"ExtraWarnings"
+			}
+		)
+
+		defines(
+			{
+				"_GNU_SOURCE"
 			}
 		)
 
@@ -135,6 +162,12 @@ solution("Hacking")
 			}
 		)
 
+		defines(
+			{
+				define_ptrace
+			}
+		)
+
 		configuration("with-readv")
 			defines(
 				{
@@ -158,6 +191,7 @@ solution("Hacking")
 					"readline"
 				}
 			)
+
 		libdirs(
 			{
 				"build/lib"
