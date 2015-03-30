@@ -70,9 +70,11 @@ int do_child(int argc, const char **argv)
 	memcpy(args, argv, argc*sizeof(char*));
 	args[argc] = NULL;		// The array must be NULL terminated.
 
-	/* ptrace(PTRACE_TRACEME);		// We are nofying the system we want to be ptraced! */
+#ifdef USE_PTRACE
+	ptrace(PTRACE_TRACEME);		// We are nofying the system we want to be ptraced!
 
 	/* kill(getpid(), SIGSTOP);	// We are sending ourself a SIGSTOP to allow the parent process to continue. */
+#endif
 
 	return execvp(args[0], args);	// We launch the command, which will replace the child process.
 }
@@ -103,7 +105,11 @@ int main(int argc, const char **argv)
 		if( pid == 0 )
 			return do_child(argc - 1, argv + 1);
 	}
-	/* ptrace(PTRACE_CONT, pid, NULL, NULL); */
+	Args_Free(args);
+
+#ifdef USE_PTRACE
+	ptrace(PTRACE_CONT, pid, NULL, NULL);
+#endif
 
 	bool error = false;
 #ifdef USE_readline
@@ -128,49 +134,7 @@ int main(int argc, const char **argv)
 	lua_register(L, "Event_index", Event_index);
 	lua_register(L, "Event_newindex", Event_newindex);
 
-	luaL_dostring(
-		L,
-		"Event = {}\n"
-		"setmetatable(Event, Event)\n"
-		"function Event.__call()\n"
-		"  local self = {}\n"
-		"  setmetatable(self, Event)\n"
-		"  return self\n"
-		"end\n"
-		"Event.__index = Event_index\n"
-		"Event.__newindex = Event_newindex\n"
-		"\n"
-		"ev = Event()\n"
-	);
-
-	/* lua_getglobal(L, "ev"); */
-	/* lua_pushinteger(L, (long)&ev); */
-	/* lua_setfield(L, -2, "_id"); */
-	/* lua_remove(L, -1); */
-
-	luaL_dostring(
-		L,
-		"function Lquit()\n"
-		"  ev.quit = true\n"
-		"end\n"
-	);
-
-	error = luaL_dostring(
-		L,
-		"CBind = {}\n"
-		"setmetatable(CBind, CBind)\n"
-		"function CBind.__call()\n"
-		"    local self = {}\n"
-		"    setmetatable(self, CBind)\n"
-		"    return self\n"
-		"end\n"
-		"CBind.__index = function(table, key)\n"
-		"    return function (...)\n"
-		"        return C_call(key, ...)\n"
-		"    end\n"
-		"end\n"
-		"C = CBind()\n"
-	);
+	luaL_dofile(L, "init.lua");
 
 #ifdef USE_readline
 	Logger_info(
@@ -252,6 +216,7 @@ int main(int argc, const char **argv)
 #endif
 	Maps_free(&ev.mem);
 	Logger_free(ev.log);
+	lua_close(L);
 
 	return EXIT_SUCCESS;
 }
