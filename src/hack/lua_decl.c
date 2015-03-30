@@ -28,7 +28,8 @@ static void luaA_to_pEvent(lua_State *L, luaA_Type t, void *c_out, int index)
 
 	lua_getfield(L, index, "_addr");
 	*p = (Event*)lua_tointeger(L, -1);
-	lua_pop(L, 1);
+	lua_remove(L, -1);
+	/* lua_pop(L, 1); */
 
 	(void)t;
 }
@@ -40,13 +41,7 @@ static int C(lua_State *L)
 
 int Mylua_Scan(lua_State *L)
 {
-	Event *ev;
-	int size = lua_gettop(L);
-	void *out;
-	const char *str;
-	unsigned long addr, to_read;
-
-	if( size != 4 )
+	if( lua_gettop(L) != 4 )
 	{
 		lua_pushstring(L, "Invalid number of argument.");
 		lua_error(L);
@@ -54,23 +49,13 @@ int Mylua_Scan(lua_State *L)
 		return 0;
 	}
 
+	Event *ev;
+	void *out;
+	const char *str;
+	unsigned long addr = luaL_checklong(L, 2), to_read = luaL_checklong(L, 3);
+
+	// There may be a bug in this function call or around:
 	luaA_to_pEvent(L, luaA_type_find(L, "pEvent"), &ev, 1);
-
-	Logger_debug(
-		ev->log,
-		"Arg %d: '%s'\n",
-		2,
-		lua_tostring(L, 2)
-	);
-	addr = luaL_checklong(L, 2);
-
-	Logger_debug(
-		ev->log,
-		"Arg %d: '%s'\n",
-		3,
-		lua_tostring(L, 3)
-	);
-	to_read = luaL_checklong(L, 3);
 
 	Logger_debug(
 		ev->log,
