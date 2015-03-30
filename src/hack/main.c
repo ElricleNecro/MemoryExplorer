@@ -72,8 +72,6 @@ int do_child(int argc, const char **argv)
 
 #ifdef USE_PTRACE
 	ptrace(PTRACE_TRACEME, NULL, NULL, NULL);		// We are nofying the system we want to be ptraced!
-
-	/* kill(getpid(), SIGSTOP);	// We are sending ourself a SIGSTOP to allow the parent process to continue. */
 #endif
 
 	return execvp(args[0], args);	// We launch the command, which will replace the child process.
@@ -104,12 +102,24 @@ int main(int argc, const char **argv)
 		pid = fork();
 		if( pid == 0 )
 			return do_child(argc - 1, argv + 1);
-	}
-	Args_Free(args);
 
 #ifdef USE_PTRACE
-	ptrace(PTRACE_CONT, pid, NULL, NULL);
+#ifdef DEBUG_SIGNALS
+		int status;
+		waitpid(pid, &status, 0);
+		if( WIFCONTINUED(status) )
+			fprintf(stderr, "Pid %d continued\n", pid);
+		else if( WIFSTOPPED(status) )
+			fprintf(stderr, "Pid %d is stopped.\n", pid);
+		else
+			fprintf(stderr, "Pid %d has status %d.\n", pid, status);
+#else
+		waitpid(pid, NULL, 0);
 #endif
+		ptrace(PTRACE_DETACH, pid, NULL, NULL);
+#endif
+	}
+	Args_Free(args);
 
 	bool error = false;
 #ifdef USE_readline
