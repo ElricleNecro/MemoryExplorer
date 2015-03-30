@@ -7,9 +7,25 @@
 	#define USE_PTRACE
 #endif
 
+#if defined(USE_vm_ready) && (defined(__APPLE__) && defined(__MACH__))
+	#define USE_PTRACE
+	#undef USE_vm_ready
+#endif
+
+#if defined(USE_PTRACE) && (defined(__APPLE__) && defined(__MACH__))
+	#define PTRACE_ATTACH PT_ATTACH
+	#define PTRACE_DETACH PT_DETACH
+	#define PTRACE_TRACEME PT_TRACE_ME
+	#define PTRACE_CONT PT_CONTINUE
+
+	#define PTRACE_PEEKDATA PT_READ_D
+	#define PTRACE_POKEDATA PT_WRITE_D
+#endif
+
 #ifdef USE_PTRACE
-	#include <sys/ptrace.h>
 	#include <sys/wait.h>
+	#include <sys/types.h>
+	#include <sys/ptrace.h>
 #endif
 
 #ifdef USE_vm_readv
@@ -17,7 +33,7 @@
 #endif
 
 #ifdef __linux__
-#include <byteswap.h>
+	#include <byteswap.h>
 #elif defined(__APPLE__) && defined(__MACH__)
 static inline unsigned short bswap_16(unsigned short x) {
 	return (x>>8) | (x<<8);

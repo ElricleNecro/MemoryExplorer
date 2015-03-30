@@ -71,7 +71,7 @@ int do_child(int argc, const char **argv)
 	args[argc] = NULL;		// The array must be NULL terminated.
 
 #ifdef USE_PTRACE
-	ptrace(PTRACE_TRACEME);		// We are nofying the system we want to be ptraced!
+	ptrace(PTRACE_TRACEME, NULL, NULL, NULL);		// We are nofying the system we want to be ptraced!
 
 	/* kill(getpid(), SIGSTOP);	// We are sending ourself a SIGSTOP to allow the parent process to continue. */
 #endif
