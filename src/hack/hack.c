@@ -122,10 +122,10 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 		return false;
 	}
 
-	Logger_info(ev->log, "Value as int (2complements): '%d'\n", cad( *((int*)( (void*)buf )) ));
-	Logger_info(ev->log, "Value as int (bswap64): '%d'\n", bswap_64( *((int*)( (void*)buf )) ));
-	Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", cad( bswap_64( *((int*)( (void*)buf )) ) ));
-	Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", bswap_64( cad( *((int*)( (void*)buf )) ) ));
+	/* Logger_info(ev->log, "Value as int (2complements): '%d'\n", cad( *((int*)( (void*)buf )) )); */
+	/* Logger_info(ev->log, "Value as int (bswap64): '%d'\n", bswap_64( *((int*)( (void*)buf )) )); */
+	/* Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", cad( bswap_64( *((int*)( (void*)buf )) ) )); */
+	/* Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", bswap_64( cad( *((int*)( (void*)buf )) ) )); */
 
 	*(char**)out = buf;
 
@@ -133,6 +133,88 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 }
 #endif
 
+#ifdef USE_PTRACE
+// This function will scan the memory. It takes an argument which is the memory offset to read from the process `ev->pid`.
+// If the read is succesful, it will print the result
+bool Event_write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
+{
+	Logger_info(ev->log, "writeing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
+
+	ptrace(
+		PTRACE_ATTACH,
+		ev->pid,
+		NULL,
+		NULL
+	);
+
+	waitpid(ev->pid, NULL, 0);
+
+#ifdef USE_PURE_PTRACE
+	char *ptr = in;
+
+	for(int i = 0; i < bytes_to_write; i+=sizeof(long),ptr+=sizeof(long))
+	{
+		*ptr = ptrace(
+			PTRACE_POKEDATA,
+			ev->pid,
+			offset,
+			ptr
+		);
+
+		printf("%d -- before: %d (write %d -- %d)\n", i, bytes_to_write, (int)*ptr, *ptr);
+	}
+#elif defined(USE_lseek_write)
+	lseek(ev->mem_fd, offset, SEEK_SET);
+	write(ev->mem_fd, in, bytes_to_write);
+#else
+	pwrite(ev->mem_fd, in, bytes_to_write, offset);
+#endif
+
+	ptrace(
+		PTRACE_DETACH,
+		ev->pid,
+		NULL,
+		NULL
+	);
+
+	return true;
+}
+#elif defined(USE_vm_readv)
+bool Event_write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
+{
+	Logger_info(ev->log, "writeing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
+
+	ssize_t nwrite;
+	struct iovec local, remote;
+
+	local.iov_base = in;
+	local.iov_len  = bytes_to_write;
+
+	remote.iov_base = (void*)offset;
+	remote.iov_len  = bytes_to_write;
+
+	nwrite = process_vm_writev(
+		ev->pid,
+		&local,
+		1,
+		&remote,
+		1,
+		0
+	);
+
+	if( nwrite != bytes_to_write )
+	{
+		Logger_error(
+			ev->log,
+			"Allocation error: '%s'\n",
+			strerror(errno)
+		);
+		return false;
+	}
+
+	return true;
+}
+#endif
 // This function allow the user to quit the program
 bool quit(Event *ev)
 {

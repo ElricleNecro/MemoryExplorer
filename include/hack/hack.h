@@ -82,6 +82,7 @@ typedef struct _event {
 } Event;
 
 bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out);
+bool Event_write(Event *ev, size_t offset, ssize_t bytes_to_read, void *in);
 bool quit(Event *ev);
 bool print_map(Event *ev);
 
