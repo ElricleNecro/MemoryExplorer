@@ -82,18 +82,18 @@ int Mylua_Scan(lua_State *L)
 		Logger_debug(
 			ev->log,
 			"Representation as int: '%d'\n",
-			*(int*)out
+			(int)*(char*)out
 		);
-		lua_pushinteger(L, *(int*)out);
+		lua_pushinteger(L, (int)*(char*)out);
 	}
 	else if( !strcmp(str, "long") )
 	{
 		Logger_debug(
 			ev->log,
 			"Representation as long: '%ld'\n",
-			*(long*)out
+			(long)*(char*)out
 		);
-		lua_pushinteger(L, *(long*)out);
+		lua_pushinteger(L, (long)*(char*)out);
 	}
 	else if( !strcmp(str, "float") )
 	{
@@ -102,7 +102,7 @@ int Mylua_Scan(lua_State *L)
 			"Representation as float: '%g'\n",
 			*(float*)out
 		);
-		lua_pushnumber(L, *(float*)out);
+		lua_pushnumber(L, (float)*(char*)out);
 	}
 	else if( !strcmp(str, "double") )
 	{
@@ -111,7 +111,7 @@ int Mylua_Scan(lua_State *L)
 			"Representation as double: '%g'\n",
 			*(double*)out
 		);
-		lua_pushnumber(L, *(double*)out);
+		lua_pushnumber(L, (double)*(char*)out);
 	}
 
 	free(out);
