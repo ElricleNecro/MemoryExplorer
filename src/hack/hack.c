@@ -23,7 +23,12 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 	Logger_info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
 	char *buf = NULL;
-	if( (buf = malloc(bytes_to_read * sizeof(char))) == NULL )
+	size_t to_allocate = bytes_to_read * sizeof(char);
+
+#ifdef USE_PURE_PTRACE
+	to_allocate += to_allocate % sizeof(long);
+#endif
+	if( (buf = malloc(to_allocate)) == NULL )
 	{
 		Logger_error(
 			ev->log,
@@ -45,17 +50,17 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 #ifdef USE_PURE_PTRACE
 	char *ptr = buf;
 
-	for(int i = 0; i < bytes_to_read; i+=sizeof(long),ptr+=sizeof(long))
-	{
-		*ptr = ptrace(
+	/* for(int i = 0; i < bytes_to_read; i+=sizeof(long),ptr+=sizeof(long)) */
+	/* { */
+		*buf = ptrace(
 			PTRACE_PEEKDATA,
 			ev->pid,
 			offset,
 			NULL
 		);
 
-		printf("%d -- before: %d (read %d -- %d)\n", i, bytes_to_read, (int)*ptr, *ptr);
-	}
+		/* printf("%d -- before: %d (read %d -- %d)\n", i, bytes_to_read, (int)*ptr, *ptr); */
+	/* } */
 #elif defined(USE_lseek_read)
 	lseek(ev->mem_fd, offset, SEEK_SET);
 	read(ev->mem_fd, buf, bytes_to_read);
@@ -140,6 +145,24 @@ bool Event_write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 {
 	Logger_info(ev->log, "writeing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
 
+#ifdef USE_PURE_PTRACE
+	void *data = NULL;
+
+	// If we want to write something smaller than a word (sizeof(long)), we are going to need the surrounding memory.
+	if( bytes_to_write < sizeof(long) )
+	{
+		scan(ev, offset, bytes_to_write, &data);
+
+		memcpy(data, in, bytes_to_write);
+		/* for (int i = 0; i < bytes_to_write; ++i) */
+		/* { */
+			/* ((char*)data)[i] = ((char*)in)[i]; */
+		/* } */
+	}
+	else
+		data = in;
+#endif
+
 	ptrace(
 		PTRACE_ATTACH,
 		ev->pid,
@@ -150,19 +173,14 @@ bool Event_write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 	waitpid(ev->pid, NULL, 0);
 
 #ifdef USE_PURE_PTRACE
-	char *ptr = in;
 
-	for(int i = 0; i < bytes_to_write; i+=sizeof(long),ptr+=sizeof(long))
-	{
-		*ptr = ptrace(
-			PTRACE_POKEDATA,
-			ev->pid,
-			offset,
-			ptr
-		);
+	ptrace(
+		PTRACE_POKEDATA,
+		ev->pid,
+		offset,
+		data
+	);
 
-		printf("%d -- before: %d (write %d -- %d)\n", i, bytes_to_write, (int)*ptr, *ptr);
-	}
 #elif defined(USE_lseek_write)
 	lseek(ev->mem_fd, offset, SEEK_SET);
 	write(ev->mem_fd, in, bytes_to_write);
