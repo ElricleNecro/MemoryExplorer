@@ -31,3 +31,17 @@ end
 
 C = CBind()
 
+function test_modif(a_addr, stop_addr)
+	a_value = Scanner(ev, a_addr, 4, "int")
+	stop_value = Scanner(ev, stop_addr, 4, "int")
+
+	print("a = ", a_value)
+	print("stop = ", stop_value)
+
+	print("setting a to ", stop_value - 2)
+
+	Writer(ev, a_addr, 4, "int", stop_value - 2)
+
+	return Scanner(ev, a_addr, 4, "int")
+end
+
