@@ -17,7 +17,7 @@
 #define luaL_checkdouble(L, n) ((double)luaL_checknumber(L, (n)))
 #endif
 
-lua_State* lua_Init(void);
+lua_State* lua_Init(Event *ev);
 void lua_Event(lua_State *L);
 
 #endif /* end of include guard: LUA_DECL_H_6XQI2IYP */

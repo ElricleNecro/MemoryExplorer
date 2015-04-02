@@ -1,5 +1,7 @@
 #include "hack/lua_decl.h"
 
+Event *global_ev;
+
 // Converting a pid_t type into a lua integer:
 static int luaA_push_pid_t(lua_State *L, luaA_Type t, const void *c_in)
 {
@@ -237,7 +239,32 @@ int Mylua_Write(lua_State *L)
 	return 0;
 }
 
-lua_State* lua_Init(void)
+Event* get_event_instance_ptr(lua_State *L)
+{
+	return global_ev;
+	(void)L;
+}
+
+// Call when accessing a field:
+int Event_index(lua_State *L)
+{
+	const char *mname = lua_tostring(L, -1);
+	/* lua_getfield(L, -1, "_id"); */
+	/* printf("Field address: %d\n", lua_tointeger(L, -1)); */
+	Event *self = get_event_instance_ptr(L);
+	return luaA_struct_push_member_name(L, Event, mname, self);
+}
+
+// Call when setting a field:
+int Event_newindex(lua_State *L)
+{
+	const char *mname = lua_tostring(L, -2);
+	Event *self = get_event_instance_ptr(L);
+	luaA_struct_to_member_name(L, Event, mname, self, -1);
+	return 0;
+}
+
+lua_State* lua_Init(Event *ev)
 {
 	lua_State *L = luaL_newstate();
 	luaL_openlibs(L);
@@ -257,6 +284,13 @@ lua_State* lua_Init(void)
 	lua_setglobal(L, "Writer");
 
 	lua_Event(L);
+
+	lua_register(L, "Event_index", Event_index);
+	lua_register(L, "Event_newindex", Event_newindex);
+
+	global_ev = ev;
+
+	luaL_dofile(L, "init.lua");
 
 	return L;
 }
