@@ -65,7 +65,6 @@
 // two's complement:
 #define cad(var) ((~var) + 1)
 
-
 struct _event;
 
 typedef bool (*callback)(struct _event*, char*);
@@ -81,6 +80,8 @@ typedef struct _event {
 	unsigned long _addr;
 } Event;
 
+Event* Event_New(pid_t pid, const char *mem_file);
+void Event_Free(Event *ev);
 bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out);
 bool Event_write(Event *ev, size_t offset, ssize_t bytes_to_read, void *in);
 bool quit(Event *ev);

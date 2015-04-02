@@ -15,6 +15,37 @@ static inline unsigned long long bswap_64(unsigned long long x) {
 }
 #endif
 
+Event* Event_New(pid_t pid, const char *mem_file)
+{
+	Event *ev = NULL;
+
+	if( (ev = malloc(sizeof(Event))) == NULL )
+	{
+		perror("Allocation error:");
+		return NULL;
+	}
+
+	ev->pid = pid;		//<- pid of the process to read
+	ev->mem_fd = open(
+		mem_file,
+		O_RDWR
+	);				//<- pid memory file
+	ev->log = Logger_new(stderr, ALL);
+	ev->mem = NULL;			//<- memory map
+	ev->quit = false;		//<- we do not want to terminate the program right now
+	ev->_addr = (unsigned long)ev;
+
+	return ev;
+}
+
+void Event_Free(Event *ev)
+{
+	Maps_free(&ev->mem);
+	Logger_free(ev->log);
+
+	free(ev);
+}
+
 #ifdef USE_PTRACE
 // This function will scan the memory. It takes an argument which is the memory offset to read from the process `ev->pid`.
 // If the read is succesful, it will print the result
