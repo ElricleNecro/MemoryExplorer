@@ -104,8 +104,9 @@ int main(int argc, const char **argv)
 	snprintf(input, 1023, "/proc/%d/mem", pid);
 
 	Event *ev = Event_New(pid, input);
-
 	lua_State *L = lua_Init(ev);
+
+	memset(input, 0, 1024 * sizeof(char));	//<- ... is set to 0 everywhere
 
 #ifdef USE_readline
 	Logger_info(
@@ -116,15 +117,6 @@ int main(int argc, const char **argv)
 	RLData_init(&cli, "scanmem > ", "/home/plum/.scanmem_history");
 	RLData_readHistory(&cli);
 #endif
-
-	Logger_info(
-		ev->log,
-		"Preparing memory mapping.\n"
-	);
-
-	Maps_read(&ev->mem, ev->pid);
-
-	memset(input, 0, 1024 * sizeof(char));	//<- ... is set to 0 everywhere
 
 	Logger_info(ev->log, "Writing pid %d\n", ev->pid);
 
@@ -186,7 +178,7 @@ int main(int argc, const char **argv)
 	RLData_free(&cli);
 #endif
 	Event_Free(ev);
-	lua_close(L);
+	MyLua_Free(L);
 
 	return EXIT_SUCCESS;
 }
