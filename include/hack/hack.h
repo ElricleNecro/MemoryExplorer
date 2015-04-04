@@ -1,18 +1,28 @@
 #ifndef HACK_H_326FWU4H
 #define HACK_H_326FWU4H
 
-#if defined(USE_PTRACE) && defined(USE_vm_readv)
+#if defined(USE_PTRACE) && defined(USE_vm_readv) // {
 	#undef USE_vm_readv
-#elif !defined(USE_PTRACE) && !defined(USE_vm_readv)
+// }
+#elif !defined(USE_PTRACE) && !defined(USE_vm_readv) // {
 	#define USE_PTRACE
-#endif
+#endif // }
 
-#if defined(USE_vm_ready) && (defined(__APPLE__) && defined(__MACH__))
+#if defined(USE_vm_ready) && (defined(__APPLE__) && defined(__MACH__)) // {
 	#define USE_PTRACE
 	#undef USE_vm_ready
-#endif
+#endif // }
 
-#if defined(USE_PTRACE) && (defined(__APPLE__) && defined(__MACH__))
+#ifdef USE_PTRACE // {
+	#include <sys/wait.h>
+	#include <sys/types.h>
+	#include <sys/ptrace.h>
+// }
+#elif defined(USE_vm_readv) // {
+	#include <sys/uio.h>
+#endif // }
+
+#if defined(USE_PTRACE) && (defined(__APPLE__) && defined(__MACH__)) // {
 	#define PTRACE_ATTACH PT_ATTACH
 	#define PTRACE_DETACH PT_DETACH
 	#define PTRACE_TRACEME PT_TRACE_ME
@@ -20,25 +30,7 @@
 
 	#define PTRACE_PEEKDATA PT_READ_D
 	#define PTRACE_POKEDATA PT_WRITE_D
-#endif
-
-#ifdef USE_PTRACE
-	#include <sys/wait.h>
-	#include <sys/types.h>
-	#include <sys/ptrace.h>
-#endif
-
-#ifdef USE_vm_readv
-	#include <sys/uio.h>
-#endif
-
-#ifdef __linux__
-	#include <byteswap.h>
-#elif defined(__APPLE__) && defined(__MACH__)
-	static inline unsigned short bswap_16(unsigned short x);
-	static inline unsigned int bswap_32(unsigned int x);
-	static inline unsigned long long bswap_64(unsigned long long x);
-#endif
+#endif // }
 
 #include <string.h>
 #include <errno.h>
@@ -50,17 +42,26 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#ifdef __linux__ // {
+	#include <byteswap.h>
+// }
+#elif defined(__APPLE__) && defined(__MACH__) // {
+	static inline unsigned short bswap_16(unsigned short x);
+	static inline unsigned int bswap_32(unsigned int x);
+	static inline unsigned long long bswap_64(unsigned long long x);
+#endif // }
+
 #include "logger/logger.h"
 #include "hack/maps.h"
 #include "dict/dict.h"
 
-#ifndef WARNING
+#ifndef WARNING // {
 	#define WARNING(str, ...) fprintf(stderr, "\033[33mWarning\033[00m: "str"\n", ##__VA_ARGS__)
-#endif
+#endif // }
 
-#ifndef ERROR
+#ifndef ERROR // {
 	#define ERROR(str, ...) fprintf(stderr, "\033[31mError\033[00m: "str"\n", ##__VA_ARGS__)
-#endif
+#endif // }
 
 // two's complement:
 #define cad(var) ((~var) + 1)
@@ -82,9 +83,16 @@ typedef struct _event {
 
 Event* Event_New(pid_t pid, const char *mem_file);
 void Event_Free(Event *ev);
-bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out);
-bool Event_write(Event *ev, size_t offset, ssize_t bytes_to_read, void *in);
-bool quit(Event *ev);
-bool print_map(Event *ev);
+
+bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out);
+bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_read, void *in);
+
+bool Event_Quit(Event *ev);
+bool Event_PrintMap(Event *ev);
+
+#ifdef USE_PTRACE // {
+bool Event_Attach(Event *ev);
+bool Event_Detach(Event *ev);
+#endif // }
 
 #endif /* end of include guard: HACK_H_326FWU4H */

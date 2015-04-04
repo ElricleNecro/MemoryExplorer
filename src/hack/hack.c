@@ -1,6 +1,6 @@
 #include "hack/hack.h"
 
-#if defined(__APPLE__) && defined(__MACH__)
+#if defined(__APPLE__) && defined(__MACH__) // {
 static inline unsigned short bswap_16(unsigned short x) {
 	return (x>>8) | (x<<8);
 }
@@ -13,7 +13,7 @@ static inline unsigned long long bswap_64(unsigned long long x) {
 	return (((unsigned long long)bswap_32(x&0xffffffffull))<<32) |
 		(bswap_32(x>>32));
 }
-#endif
+#endif // }
 
 Event* Event_New(pid_t pid, const char *mem_file)
 {
@@ -35,6 +35,13 @@ Event* Event_New(pid_t pid, const char *mem_file)
 	ev->quit = false;		//<- we do not want to terminate the program right now
 	ev->_addr = (unsigned long)ev;
 
+	Logger_info(
+		ev->log,
+		"Preparing memory mapping.\n"
+	);
+
+	Maps_read(&ev->mem, ev->pid);
+
 	return ev;
 }
 
@@ -46,10 +53,52 @@ void Event_Free(Event *ev)
 	free(ev);
 }
 
-#ifdef USE_PTRACE
+#ifdef USE_PTRACE // {
+bool Event_Attach(Event *ev)
+{
+	int status;
+
+	if( ptrace(PTRACE_ATTACH, ev->pid, NULL, NULL) == -1L )
+	{
+		Logger_error(
+			ev->log,
+			"Error while attaching the process: '%s'.",
+			strerror(errno)
+		);
+		return false;
+	}
+
+	if( ( waitpid(ev->pid, &status, 0) == -1L ) || !WIFSTOPPED(status) )
+	{
+		Logger_error(
+			ev->log,
+			"Error while stopping the process: '%s'.",
+			strerror(errno)
+		);
+		return false;
+	}
+
+	return true;
+}
+
+bool Event_Detach(Event *ev)
+{
+	if( ptrace(PTRACE_DETACH, ev->pid, NULL, NULL) == -1L)
+	{
+		Logger_error(
+			ev->log,
+			"Error while detaching the process: '%s'.",
+			strerror(errno)
+		);
+		return false;
+	}
+
+	return true;
+}
+
 // This function will scan the memory. It takes an argument which is the memory offset to read from the process `ev->pid`.
 // If the read is succesful, it will print the result
-bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
+bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 {
 	Logger_info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
@@ -69,14 +118,8 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 		return false;
 	}
 
-	ptrace(
-		PTRACE_ATTACH,
-		ev->pid,
-		NULL,
-		NULL
-	);
-
-	waitpid(ev->pid, NULL, 0);
+	if( !Event_Attach(ev) )
+		return false;
 
 #ifdef USE_PURE_PTRACE
 	char *ptr = buf;
@@ -99,21 +142,61 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 	pread(ev->mem_fd, buf, bytes_to_read, offset);
 #endif
 
-	ptrace(
-		PTRACE_DETACH,
-		ev->pid,
-		NULL,
-		NULL
-	);
-
 	*(char**)out = buf;
 
 	/* ptrace(PTRACE_POKEDATA, ev->pid, ) */
 
-	return true;
+	return Event_Detach(ev);
 }
-#elif defined(USE_vm_readv)
-bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
+
+// This function will scan the memory. It takes an argument which is the memory offset to read from the process `ev->pid`.
+// If the read is succesful, it will print the result
+bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
+{
+	Logger_info(ev->log, "writeing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
+
+#ifdef USE_PURE_PTRACE
+	void *data = NULL;
+
+	// If we want to write something smaller than a word (sizeof(long)), we are going to need the surrounding memory.
+	if( bytes_to_write < sizeof(long) )
+	{
+		scan(ev, offset, bytes_to_write, &data);
+
+		memcpy(data, in, bytes_to_write);
+		/* for (int i = 0; i < bytes_to_write; ++i) */
+		/* { */
+			/* ((char*)data)[i] = ((char*)in)[i]; */
+		/* } */
+	}
+	else
+		data = in;
+#endif
+
+	if( !Event_Attach(ev) )
+		return false;
+
+#ifdef USE_PURE_PTRACE
+
+	ptrace(
+		PTRACE_POKEDATA,
+		ev->pid,
+		offset,
+		data
+	);
+
+#elif defined(USE_lseek_write)
+	lseek(ev->mem_fd, offset, SEEK_SET);
+	write(ev->mem_fd, in, bytes_to_write);
+#else
+	pwrite(ev->mem_fd, in, bytes_to_write, offset);
+#endif
+
+	return Event_Detach(ev);
+}
+// }
+#elif defined(USE_vm_readv) // {
+bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 {
 	ssize_t nread;
 
@@ -158,78 +241,12 @@ bool scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 		return false;
 	}
 
-	/* Logger_info(ev->log, "Value as int (2complements): '%d'\n", cad( *((int*)( (void*)buf )) )); */
-	/* Logger_info(ev->log, "Value as int (bswap64): '%d'\n", bswap_64( *((int*)( (void*)buf )) )); */
-	/* Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", cad( bswap_64( *((int*)( (void*)buf )) ) )); */
-	/* Logger_info(ev->log, "Value as int (~bswap64+1): '%d'\n", bswap_64( cad( *((int*)( (void*)buf )) ) )); */
-
 	*(char**)out = buf;
 
 	return true;
 }
-#endif
 
-#ifdef USE_PTRACE
-// This function will scan the memory. It takes an argument which is the memory offset to read from the process `ev->pid`.
-// If the read is succesful, it will print the result
-bool Event_write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
-{
-	Logger_info(ev->log, "writeing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
-
-#ifdef USE_PURE_PTRACE
-	void *data = NULL;
-
-	// If we want to write something smaller than a word (sizeof(long)), we are going to need the surrounding memory.
-	if( bytes_to_write < sizeof(long) )
-	{
-		scan(ev, offset, bytes_to_write, &data);
-
-		memcpy(data, in, bytes_to_write);
-		/* for (int i = 0; i < bytes_to_write; ++i) */
-		/* { */
-			/* ((char*)data)[i] = ((char*)in)[i]; */
-		/* } */
-	}
-	else
-		data = in;
-#endif
-
-	ptrace(
-		PTRACE_ATTACH,
-		ev->pid,
-		NULL,
-		NULL
-	);
-
-	waitpid(ev->pid, NULL, 0);
-
-#ifdef USE_PURE_PTRACE
-
-	ptrace(
-		PTRACE_POKEDATA,
-		ev->pid,
-		offset,
-		data
-	);
-
-#elif defined(USE_lseek_write)
-	lseek(ev->mem_fd, offset, SEEK_SET);
-	write(ev->mem_fd, in, bytes_to_write);
-#else
-	pwrite(ev->mem_fd, in, bytes_to_write, offset);
-#endif
-
-	ptrace(
-		PTRACE_DETACH,
-		ev->pid,
-		NULL,
-		NULL
-	);
-
-	return true;
-}
-#elif defined(USE_vm_readv)
-bool Event_write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
+bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 {
 	Logger_info(ev->log, "writeing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
 
@@ -263,15 +280,16 @@ bool Event_write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 
 	return true;
 }
-#endif
+#endif // }
+
 // This function allow the user to quit the program
-bool quit(Event *ev)
+bool Event_Quit(Event *ev)
 {
 	ev->quit = true;
 	return true;
 }
 
-bool print_map(Event *ev)
+bool Event_PrintMap(Event *ev)
 {
 	Logger_debug(
 		ev->log,
