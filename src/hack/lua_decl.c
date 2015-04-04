@@ -70,7 +70,7 @@ int Mylua_Scan(lua_State *L)
 		to_read
 	);
 
-	if( !scan(ev, addr, to_read, &out) )
+	if( !Event_Scan(ev, addr, to_read, &out) )
 	{
 		lua_pushstring(L, "Function 'scan' exited without finishing it's task");
 		lua_error(L);
@@ -228,7 +228,7 @@ int Mylua_Write(lua_State *L)
 		return 0;
 	}
 
-	if( !Event_write(ev, addr, to_write, in) )
+	if( !Event_Write(ev, addr, to_write, in) )
 	{
 		lua_pushstring(L, "Function 'write' exited without finishing it's task");
 		lua_error(L);
@@ -264,7 +264,7 @@ int Event_newindex(lua_State *L)
 	return 0;
 }
 
-lua_State* lua_Init(Event *ev)
+lua_State* MyLua_Init(Event *ev)
 {
 	lua_State *L = luaL_newstate();
 	luaL_openlibs(L);
@@ -295,19 +295,24 @@ lua_State* lua_Init(Event *ev)
 	return L;
 }
 
-luaA_function_declare(quit, bool, Event*)
-luaA_function_declare(print_map, bool, Event*)
+luaA_function_declare(Event_Quit, bool, Event*)
+luaA_function_declare(Event_PrintMap, bool, Event*)
 /* luaA_function_declare(scan, bool, Event*, unsigned long, unsigned long) */
 
-void lua_Event(lua_State *L)
+void MyLua_Event(lua_State *L)
 {
 	luaA_struct(L, Event);
 	luaA_struct_member(L, Event, pid, pid_t);
 	luaA_struct_member(L, Event, quit, bool);
 	luaA_struct_member(L, Event, _addr, unsigned long);
 
-	luaA_function_register(L, quit, bool, Event*);
-	luaA_function_register(L, print_map, bool, Event*);
+	luaA_function_register(L, Event_Quit, bool, Event*);
+	luaA_function_register(L, Event_PrintMap, bool, Event*);
 	/* luaA_function_register(L, scan, bool, Event*, unsigned long, unsigned long); */
 }
 
+void MyLua_Free(lua_State *L)
+{
+	lua_close(L);
+	/* free(ev); */
+}
