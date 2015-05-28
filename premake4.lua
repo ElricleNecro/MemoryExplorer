@@ -164,7 +164,8 @@ solution("Hacking")
 
 		defines(
 			{
-				define_ptrace
+				define_ptrace,
+				"LUA_COMPAT_APIINTCASTS"
 			}
 		)
 
