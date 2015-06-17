@@ -17,7 +17,7 @@
 #define luaL_checkdouble(L, n) ((double)luaL_checknumber(L, (n)))
 #endif
 
-lua_State* MyLua_Init(Event *ev);
+lua_State* MyLua_Init(Event *ev, const char *conf);
 void MyLua_Event(lua_State *L);
 void MyLua_Free(lua_State *L);
 
