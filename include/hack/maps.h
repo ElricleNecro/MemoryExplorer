@@ -30,9 +30,9 @@ typedef struct _maps {
 	RegionType type;
 
 	struct _maps *next;
-} Maps;
+}* Maps;
 
-bool Maps_read(Maps **zone, pid_t pid);
-void Maps_free(Maps **zone);
+bool Maps_read(Maps *zone, pid_t pid);
+void Maps_free(Maps *zone);
 
 #endif /* end of include guard: MAPS_H_RIAU46YX */

@@ -73,7 +73,7 @@ typedef bool (*callback)(struct _event*, char*);
 typedef struct _event {
 	pid_t pid;
 	int mem_fd;
-	Maps *mem;
+	Maps mem;
 	Logger *log;
 
 	bool quit;
