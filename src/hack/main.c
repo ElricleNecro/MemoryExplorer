@@ -37,9 +37,29 @@ char *trim(char *str)
 	return str;
 }
 
-int do_child(int argc, const char **argv)
+// int do_child(int argc, const char **argv)
+int do_child(CList l_args)
 {
+	int nb_args = 0, i = 0;
+	for(CList act = l_args; act; act = act->next)
+		nb_args++;
+
 	// We are preparing the arguments:
+	char *args[nb_args + 1];
+	// memcpy(args, argv, nb_args*sizeof(char*));
+	for(CList act = l_args; act; act=act->next)
+	{
+		args[i] = act->opt;
+		i++;
+	}
+	args[nb_args] = NULL;		// The array must be NULL terminated.
+
+#ifdef USE_PTRACE
+	ptrace(PTRACE_TRACEME, NULL, NULL, NULL);		// We are nofying the system we want to be ptraced!
+#endif
+
+	return execvp(args[0], args);	// We launch the command, which will replace the child process.
+/*
 	char *args[argc + 1];
 	memcpy(args, argv, argc*sizeof(char*));
 	args[argc] = NULL;		// The array must be NULL terminated.
@@ -49,15 +69,18 @@ int do_child(int argc, const char **argv)
 #endif
 
 	return execvp(args[0], args);	// We launch the command, which will replace the child process.
+*/
 }
 
 int main(int argc, const char **argv)
 {
+	char *conf = NULL;
 	pid_t pid = 0;
 	Args *args = Args_New();
 	Args_Error err;
 
 	Args_Add(args, "-p", NULL, T_INT, &pid, "Pid to read from.");
+	Args_Add(args, "-c", "--conf", T_CHAR, &conf, "LUA configuration file.");
 
 	err = Args_Parse(args, argc, argv);
 	if( err == TREAT_ERROR )
@@ -75,7 +98,12 @@ int main(int argc, const char **argv)
 	{
 		pid = fork();
 		if( pid == 0 )
-			return do_child(argc - 1, argv + 1);
+		{
+			for(CList act = args->rest; act != NULL; act = act->next)
+				printf("Unused: '%s'.\n", act->opt);
+			return do_child(args->rest);
+			// return do_child(argc - 1, argv + 1);
+		}
 
 #ifdef USE_PTRACE
 #ifdef DEBUG_SIGNALS
@@ -104,7 +132,7 @@ int main(int argc, const char **argv)
 	snprintf(input, 1023, "/proc/%d/mem", pid);
 
 	Event *ev = Event_New(pid, input);
-	lua_State *L = lua_Init(ev);
+	lua_State *L = MyLua_Init(ev, conf);
 
 	memset(input, 0, 1024 * sizeof(char));	//<- ... is set to 0 everywhere
 
