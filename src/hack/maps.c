@@ -9,16 +9,84 @@ void to_first_space(char *str)
 	*str = '\0';
 }
 
-bool Maps_read(Maps **zone, pid_t pid)
+char* get_exe_name(const char *link)
+{
+	unsigned int lb_size = 0;
+	char *bin_name = NULL;
+
+	if( ( bin_name = malloc(NAME_BUF_SIZE * sizeof(char)) ) == NULL )
+	{
+		perror("Allocating 'bin_name'");
+		return NULL;
+	}
+
+	if( (lb_size = readlink(link, bin_name, NAME_BUF_SIZE)) > 0 )
+		bin_name[lb_size] = 0;
+	else
+		bin_name[0] = 0;
+
+	if( bin_name[0] )
+		to_first_space(bin_name);
+
+	return bin_name;
+}
+
+void get_region_type(Maps zone, const char *bin_name, size_t prev_end)
+{
+	bool is_exe = false;
+	static unsigned int regions = 0;
+
+	if( regions > 0 )
+	{
+		if( (zone)->exec == 'x' || (strncmp((zone)->filename,	bin_name, NAME_BUF_SIZE) != 0 &&
+			( (zone)->filename[0] != '\0' || (zone)->start != prev_end ) ) ||
+			regions >= 4
+		)
+		{
+			regions = 0;
+			is_exe = false;
+		} else {
+			regions++;
+		}
+	}
+	if( regions == 0 )
+	{
+		if( (zone)->exec == 'x' && (zone)->filename[0] != '\0' )
+		{
+			regions++;
+
+			if( strncmp((zone)->filename, bin_name, NAME_BUF_SIZE) == 0 )
+				is_exe = true;
+
+			/* strncpy(bin_name, (zone)->filename, NAME_BUF_SIZE); */
+			/* bin_name[NAME_BUF_SIZE - 1] = '\0';  [> just to be sure <] */
+		}
+		/* load_addr = start; */
+	}
+
+	/* must have permissions to read and write, and be non-zero size */
+	if( ((zone)->write == 'w') && ((zone)->read == 'r') && (((zone)->end - (zone)->start) > (unsigned long int)0) )
+	{
+		/* determine region type */
+		if(is_exe)
+			(zone)->type = EXE;
+		else if(regions > 0)
+			(zone)->type = CODE;
+		else if(!strcmp((zone)->filename, "[heap]"))
+			(zone)->type = HEAP;
+		else if(!strcmp((zone)->filename, "[stack]"))
+			(zone)->type = STACK;
+	}
+}
+
+bool Maps_read(struct _maps **zone, pid_t pid)
 {
 	FILE* fich = NULL;
 	char *line = NULL,
 	      maps_name[NAME_BUF_SIZE] = {0},
 	      bin_link[NAME_BUF_SIZE]  = {0},
-	      bin_name[NAME_BUF_SIZE]  = {0};
-	bool is_exe = false;
+	      *bin_name; // [NAME_BUF_SIZE]  = {0};
 	size_t lon;
-	unsigned int regions = 0, lb_size = 0;
 	unsigned long int prev_end = 0x0;
 
 	snprintf(maps_name, NAME_BUF_SIZE, "/proc/%u/maps", pid);
@@ -30,17 +98,10 @@ bool Maps_read(Maps **zone, pid_t pid)
 	}
 
 	snprintf(bin_link, NAME_BUF_SIZE, "/proc/%u/exe", pid);
-	if( ( lb_size = readlink(bin_link, bin_name, NAME_BUF_SIZE) ) > 0 )
-	{
-		bin_name[lb_size] = 0;
-	} else {
-		bin_name[0] = 0;
-	}
-	fprintf(stderr, "'%s'\n", bin_name);
+	bin_name = get_exe_name(bin_link);
 
-	if( bin_name[0] )
-		to_first_space(&bin_name[0]);
-	fprintf(stderr, "'%s'\n", bin_name);
+	if( bin_name == NULL )
+		return false;
 
 	while( getline(&line, &lon, fich) != -1 )
 	{
@@ -73,67 +134,9 @@ bool Maps_read(Maps **zone, pid_t pid)
 			(*zone)->filename
 		) >= 6 )
 		{
-			if( regions > 0 )
-			{
-				if(
-					(*zone)->exec == 'x' ||
-					(
-						strncmp(
-							(*zone)->filename,
-							bin_name,
-							NAME_BUF_SIZE
-						) != 0 &&
-						(
-							(*zone)->filename[0] != '\0' ||
-							(*zone)->start != prev_end
-						)
-					) ||
-					regions >= 4
-				)
-				{
-					regions = 0;
-					is_exe = false;
-				} else {
-					regions++;
-				}
-			}
-			if( regions == 0 )
-			{
-				if(
-					(*zone)->exec == 'x' &&
-					(*zone)->filename[0] != '\0'
-				)
-				{
-					regions++;
-					if(
-						strncmp(
-							(*zone)->filename,
-							bin_name,
-							NAME_BUF_SIZE
-						) == 0
-					)
-						is_exe = true;
-					strncpy(bin_name, (*zone)->filename, NAME_BUF_SIZE);
-					bin_name[NAME_BUF_SIZE - 1] = '\0';  /* just to be sure */
-				}
-				/* load_addr = start; */
-			}
+			get_region_type(*zone, bin_name, prev_end);
+
 			prev_end = (*zone)->end;
-
-			/* must have permissions to read and write, and be non-zero size */
-			if( ((*zone)->write == 'w') && ((*zone)->read == 'r') && (((*zone)->end - (*zone)->start) > (unsigned long int)0) )
-			{
-				/* determine region type */
-				if(is_exe)
-					(*zone)->type = EXE;
-				else if(regions > 0)
-					(*zone)->type = CODE;
-				else if(!strcmp((*zone)->filename, "[heap]"))
-					(*zone)->type = HEAP;
-				else if(!strcmp((*zone)->filename, "[stack]"))
-					(*zone)->type = STACK;
-
-			}
 
 			zone = &(*zone)->next;
 		}
@@ -145,16 +148,17 @@ bool Maps_read(Maps **zone, pid_t pid)
 
 	fclose(fich);
 	free(line);
+	free(bin_name);
 
 	return true;
 }
 
-void Maps_free(Maps **zone)
+void Maps_free(struct _maps **zone)
 {
-	Maps *actual = *zone;
+	struct _maps *actual = *zone;
 	while(actual != NULL)
 	{
-		Maps *tmp = actual;
+		Maps tmp = actual;
 		actual = tmp->next;
 		free(tmp->filename);
 		free(tmp);
