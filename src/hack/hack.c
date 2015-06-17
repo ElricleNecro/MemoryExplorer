@@ -297,7 +297,7 @@ bool Event_PrintMap(Event *ev)
 		__func__
 	);
 
-	for(Maps *zone=ev->mem; zone != NULL; zone=zone->next)
+	for(Maps zone=ev->mem; zone != NULL; zone=zone->next)
 	{
 		if( zone->type == STACK )
 			printf("Stack from 0x%lx -> 0x%lx (%lu)\n", zone->start, zone->end, zone->end - zone->start);
