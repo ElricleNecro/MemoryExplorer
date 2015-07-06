@@ -99,8 +99,6 @@ int main(int argc, const char **argv)
 		pid = fork();
 		if( pid == 0 )
 		{
-			for(CList act = args->rest; act != NULL; act = act->next)
-				printf("Unused: '%s'.\n", act->opt);
 			return do_child(args->rest);
 			// return do_child(argc - 1, argv + 1);
 		}
@@ -124,21 +122,30 @@ int main(int argc, const char **argv)
 	Args_Free(args);
 
 	bool error = false;
+	bool quit = false;
 #ifdef USE_readline
 	RLData cli;
 	/* char *cmd; */
 #endif
+	Logger *log = Logger_new(stderr, argv[0], INFO);
+	lua_State *L = NULL;
 	char input[1024];			//<- the input string...
 	snprintf(input, 1023, "/proc/%d/mem", pid);
 
-	Event *ev = Event_New(pid, input);
-	lua_State *L = MyLua_Init(ev, conf);
+	{
+		Event *ev = Event_New(pid, input);
+		L = MyLua_Init(conf, ev, &quit);
+		Logger_info(log, "Writing pid %d\n", ev->pid);
+		free(ev);
+	}
+
+	/* event_create_from_c(L, ev); */
 
 	memset(input, 0, 1024 * sizeof(char));	//<- ... is set to 0 everywhere
 
 #ifdef USE_readline
 	Logger_info(
-		ev->log,
+		log,
 		"Loading readline.\n"
 	);
 
@@ -146,32 +153,30 @@ int main(int argc, const char **argv)
 	RLData_readHistory(&cli);
 #endif
 
-	Logger_info(ev->log, "Writing pid %d\n", ev->pid);
-
 	Logger_info(
-		ev->log,
+		log,
 		"Beginning loop.\n"
 	);
 
-	while( !ev->quit )			//<- the event loop, where we will interprete all command
+	while( !quit )			//<- the event loop, where we will interprete all command
 	{
 #ifdef USE_readline
 		RLData_get(&cli);		//<- we call readline to get us the command...
 
 		/* cmd = trim(cli.line);		//<- ... we trimmed it... */
 
-		Logger_debug(ev->log, "We've get: '%s'\n", ( cli.line )?cli.line:"^D");
+		Logger_debug(log, "We've get: '%s'\n", ( cli.line )?cli.line:"^D");
 
 		if( !cli.line )
 		{
-			ev->quit = true;
+			quit = true;
 			continue;
 		}
 
 		error = luaL_loadbuffer(L, cli.line, strlen(cli.line), "line") || lua_pcall(L, 0, 0, 0);
 		if (error) {
 			Logger_error(
-				ev->log,
+				log,
 				"LUA error: '%s'.\n",
 				lua_tostring(L, -1)
 			);
@@ -190,7 +195,7 @@ int main(int argc, const char **argv)
 		error = luaL_loadbuffer(L, input, strlen(input), "line") || lua_pcall(L, 0, 0, 0);
 		if (error) {
 			Logger_error(
-				ev->log,
+				log,
 				"LUA error: '%s'.\n",
 				lua_tostring(L, -1)
 			);
@@ -200,12 +205,12 @@ int main(int argc, const char **argv)
 	}
 
 #ifdef USE_readline
-	Logger_info(ev->log, "Saving history to file.\n");
+	Logger_info(log, "Saving history to file.\n");
 	RLData_saveHistory(&cli);
 
 	RLData_free(&cli);
 #endif
-	Event_Free(ev);
+	Logger_free(log);
 	MyLua_Free(L);
 
 	return EXIT_SUCCESS;
