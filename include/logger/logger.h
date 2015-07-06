@@ -28,10 +28,11 @@ typedef struct _Logger {
 	char *error,
 	     *warn,
 	     *debug,
-	     *info;
+	     *info,
+	     *name;
 } Logger;
 
-Logger* Logger_new(FILE *out, enum _Level level);
+Logger* Logger_new(FILE *out, const char *name, enum _Level level);
 void Logger_free(Logger *log);
 
 int Logger_info(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));

@@ -5,7 +5,7 @@ static char *def_warn = "\033[33m[WARNING]\033[00m ";
 static char *def_debug = "\033[36m[DEBUG]\033[00m ";
 static char *def_info = "\033[32m[INFO]\033[00m ";
 
-Logger* Logger_new(FILE *out, enum _Level level)
+Logger* Logger_new(FILE *out, const char *name, enum _Level level)
 {
 	Logger *log = NULL;
 
@@ -15,19 +15,27 @@ Logger* Logger_new(FILE *out, enum _Level level)
 		return NULL;
 	}
 
+	if( (log->name = malloc(sizeof(char) * strlen(name))) == NULL )
+	{
+		perror("Error while allocating the logger name.");
+		free(log);
+		return NULL;
+	}
+
 	log->output = out;
-	log->level = level;
+	log->level  = level;
+	strncpy(log->name, name, strlen(name));
 
 	log->error = def_error;
-	log->info = def_info;
+	log->info  = def_info;
 	log->debug = def_debug;
-	log->warn = def_warn;
+	log->warn  = def_warn;
 
 	log->dealloc_error = false;
-	log->dealloc_info = false;
+	log->dealloc_info  = false;
 	log->dealloc_debug = false;
-	log->dealloc_warn = false;
-	log->dealloc_out = false;
+	log->dealloc_warn  = false;
+	log->dealloc_out   = false;
 
 	return log;
 }
@@ -49,6 +57,7 @@ void Logger_free(Logger *log)
 	if( log->dealloc_out )
 		fclose(log->output);
 
+	free(log->name);
 	free(log);
 }
 
