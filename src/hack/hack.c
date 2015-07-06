@@ -30,7 +30,7 @@ Event* Event_New(pid_t pid, const char *mem_file)
 		mem_file,
 		O_RDWR
 	);				//<- pid memory file
-	ev->log = Logger_new(stderr, ALL);
+	ev->log = Logger_new(stderr, "test", ALL);
 	ev->mem = NULL;			//<- memory map
 	ev->quit = false;		//<- we do not want to terminate the program right now
 	ev->_addr = (unsigned long)ev;
@@ -44,6 +44,10 @@ Event* Event_New(pid_t pid, const char *mem_file)
 
 	return ev;
 }
+
+/* Event* Event_From_cmd(const char *cmd) */
+/* { */
+/* } */
 
 void Event_Free(Event *ev)
 {
