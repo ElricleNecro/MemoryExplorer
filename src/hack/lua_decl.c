@@ -1,47 +1,135 @@
 #include "hack/lua_decl.h"
 
-Event *global_ev;
+/**
+ * Argument check.
+ */
+bool** bool_check(lua_State *L) {
+	/* void *user_data = luaL_checkudata(L, 1, "Event"); */
+	void *user_data = luaL_testudata(L, 1, "bool");
+	luaL_argcheck(L, user_data != NULL, 1, "'Event' excepted!");
+	return (bool**) user_data;
+}
 
-// Converting a pid_t type into a lua integer:
-static int luaA_push_pid_t(lua_State *L, luaA_Type t, const void *c_in)
-{
-	const pid_t *p = (const pid_t*)c_in;
+/**
+ * Create an bool struct from C, and making her available from LUA.
+ */
+void bool_create_from_c(lua_State *L, bool *ev) {
+	bool **new = (bool **)lua_newuserdata(L, sizeof(bool*));
+	luaL_getmetatable(L, "bool");
+	lua_setmetatable(L, -2);
 
-	lua_pushinteger(L, *p);
+	*new = ev;
+
+	lua_setglobal(L, "quit");
+}
+
+/**
+ * Function call to quit the program.
+ */
+int quit_call(lua_State *L) {
+	bool **new = bool_check(L);
+	**new = true;
+	return 0;
+}
+
+static const struct luaL_Reg bool_m[] = {
+	{"__call", quit_call},
+	{NULL, NULL},
+};
+
+/**
+ * Opening our lua binding like a library.
+ */
+int luaopen_bool(lua_State *L) {
+	luaL_newmetatable(L, "bool");
+
+	lua_pushstring(L, "__index");
+	lua_pushvalue(L, -2);		// push the table
+	lua_pushvalue(L, -3);		// metatable.__index = metatable
+
+	luaL_setfuncs(L, bool_m, 0);
 
 	return 1;
-	(void)t;
 }
 
-// Converting a lua integer into a pid_t type:
-static void luaA_to_pid_t(lua_State *L, luaA_Type t, void *c_out, int index)
-{
-	pid_t *p = (pid_t*)c_out;
-
-	*p = lua_tointeger(L, index);
-
-	(void)t;
+/**
+ * Argument check.
+ */
+Event* event_check(lua_State *L) {
+	/* void *user_data = luaL_checkudata(L, 1, "Event"); */
+	void *user_data = luaL_testudata(L, 1, "Hack.Event");
+	luaL_argcheck(L, user_data != NULL, 1, "'Event' excepted!");
+	return (Event*) user_data;
 }
 
-// Get the pointer to the wanted instance of the event structure:
-static void luaA_to_pEvent(lua_State *L, luaA_Type t, void *c_out, int index)
-{
-	Event **p = (Event**)c_out;
+/**
+ * Creation of the new event struct, from LUA.
+ */
+int event_new(lua_State *L) {
+	Event *ev = (Event *)lua_newuserdata(L, sizeof(struct _event));
+	      /* *tmp = Event_New(); */
 
-	lua_getfield(L, index, "_addr");
-	*p = (Event*)lua_tointeger(L, -1);
-	lua_remove(L, -1);
-	/* lua_pop(L, 1); */
+	luaL_getmetatable(L, "Hack.Event");
+	lua_setmetatable(L, -2);
 
-	(void)t;
+	/* memcpy(ev, tmp, sizeof(struct _event)); */
+
+	return 1;
+	(void)ev;
 }
 
-static int C(lua_State *L)
-{
-	return luaA_call_name(L, lua_tostring(L, 1));
+/**
+ * Create an event struct from C, and making her available from LUA.
+ */
+void event_create_from_c(lua_State *L, Event *ev) {
+	Event *new = (Event *)lua_newuserdata(L, sizeof(struct _event));
+	luaL_getmetatable(L, "Hack.Event");
+	lua_setmetatable(L, -2);
+
+	memcpy(new, ev, sizeof(struct _event));
+
+	lua_setglobal(L, "ev");
 }
 
-int Mylua_Scan(lua_State *L)
+/**
+ * Method to get quit.
+ */
+int event_quit(lua_State *L) {
+	Event *ev = event_check(L);
+	lua_pushboolean(L, ev->quit);
+	return 1;
+}
+
+/**
+ * Method to get the pid.
+ */
+int event_pid(lua_State *L) {
+	Event *ev = event_check(L);
+	lua_pushinteger(L, (lua_Integer)ev->pid);
+	return 1;
+}
+
+/**
+ * Making the event struct printable from LUA.
+ */
+int event_2string(lua_State *L) {
+	Event *ev = event_check(L);
+	lua_pushfstring(L, "Process(%d)", ev->pid);
+	return 1;
+}
+
+/**
+ * Freeing the event struct.
+ */
+int event_free(lua_State *L) {
+	Event *ev = event_check(L);
+	Maps_free(&ev->mem);
+	Logger_free(ev->log);
+
+	return 0;
+}
+
+int event_scan(lua_State *L)
 {
 	if( lua_gettop(L) != 4 )
 	{
@@ -51,13 +139,10 @@ int Mylua_Scan(lua_State *L)
 		return 0;
 	}
 
-	Event *ev;
+	Event *ev = event_check(L);
 	void *out;
 	const char *str;
 	unsigned long addr = luaL_checklong(L, 2), to_read = luaL_checklong(L, 3);
-
-	// There may be a bug in this function call or around:
-	luaA_to_pEvent(L, luaA_type_find(L, "pEvent"), &ev, 1);
 
 	Logger_debug(
 		ev->log,
@@ -121,7 +206,7 @@ int Mylua_Scan(lua_State *L)
 	return 1;
 }
 
-int Mylua_Write(lua_State *L)
+int event_write(lua_State *L)
 {
 	if( lua_gettop(L) != 5 )
 	{
@@ -131,13 +216,10 @@ int Mylua_Write(lua_State *L)
 		return 0;
 	}
 
-	Event *ev;
+	Event *ev = event_check(L);
 	void *in;
 	const char *str;
 	unsigned long addr = luaL_checklong(L, 2), to_write = luaL_checklong(L, 3);
-
-	// There may be a bug in this function call or around:
-	luaA_to_pEvent(L, luaA_type_find(L, "pEvent"), &ev, 1);
 
 	Logger_debug(
 		ev->log,
@@ -239,80 +321,63 @@ int Mylua_Write(lua_State *L)
 	return 0;
 }
 
-Event* get_event_instance_ptr(lua_State *L)
-{
-	return global_ev;
-	(void)L;
+
+/**
+ * Setting event associated function.
+ */
+static const struct luaL_Reg Event_f[] = {
+	{"new", event_new},
+	{NULL, NULL},
+};
+
+/**
+ * Setting event associated method.
+ */
+static const struct luaL_Reg Event_m[] = {
+	/* {"new", event_new}, */
+	{"__tostring", event_2string},
+	{"__gc", event_free},
+	{"quit", event_quit},
+	{"pid", event_pid},
+	{"scan", event_scan},
+	{"write", event_write},
+	{NULL, NULL},
+};
+
+/**
+ * Opening our lua binding like a library.
+ */
+int luaopen_event(lua_State *L) {
+	luaL_newmetatable(L, "Hack.Event");
+
+	lua_pushvalue(L, -1);
+	lua_setfield(L, -2, "__index");
+
+	luaL_setfuncs(L, Event_m, 0);
+
+	luaL_newlib(L, Event_f);
+
+	return 1;
 }
 
-// Call when accessing a field:
-int Event_index(lua_State *L)
-{
-	const char *mname = lua_tostring(L, -1);
-	/* lua_getfield(L, -1, "_id"); */
-	/* printf("Field address: %d\n", lua_tointeger(L, -1)); */
-	Event *self = get_event_instance_ptr(L);
-	return luaA_struct_push_member_name(L, Event, mname, self);
-}
-
-// Call when setting a field:
-int Event_newindex(lua_State *L)
-{
-	const char *mname = lua_tostring(L, -2);
-	Event *self = get_event_instance_ptr(L);
-	luaA_struct_to_member_name(L, Event, mname, self, -1);
-	return 0;
-}
-
-lua_State* MyLua_Init(Event *ev)
+lua_State* MyLua_Init(const char *conf, Event *ev, bool *quit)
 {
 	lua_State *L = luaL_newstate();
 	luaL_openlibs(L);
-	luaA_open(L);
+	luaopen_event(L);
+	luaopen_bool(L);
 
-	luaA_conversion(L, bool, luaA_push_bool, luaA_to_bool);
-	luaA_conversion(L, pid_t, luaA_push_pid_t, luaA_to_pid_t);
+	bool_create_from_c(L, quit);
+	event_create_from_c(L, ev);
 
-	luaA_conversion(L, Event*, NULL, luaA_to_pEvent);
-
-	lua_register(L, "C_call", C);
-
-	lua_pushcfunction(L, Mylua_Scan);
-	lua_setglobal(L, "Scanner");
-
-	lua_pushcfunction(L, Mylua_Write);
-	lua_setglobal(L, "Writer");
-
-	lua_Event(L);
-
-	lua_register(L, "Event_index", Event_index);
-	lua_register(L, "Event_newindex", Event_newindex);
-
-	global_ev = ev;
-
-	luaL_dofile(L, "init.lua");
+	if( conf )
+		luaL_dofile(L, conf);
 
 	return L;
-}
-
-luaA_function_declare(Event_Quit, bool, Event*)
-luaA_function_declare(Event_PrintMap, bool, Event*)
-/* luaA_function_declare(scan, bool, Event*, unsigned long, unsigned long) */
-
-void MyLua_Event(lua_State *L)
-{
-	luaA_struct(L, Event);
-	luaA_struct_member(L, Event, pid, pid_t);
-	luaA_struct_member(L, Event, quit, bool);
-	luaA_struct_member(L, Event, _addr, unsigned long);
-
-	luaA_function_register(L, Event_Quit, bool, Event*);
-	luaA_function_register(L, Event_PrintMap, bool, Event*);
-	/* luaA_function_register(L, scan, bool, Event*, unsigned long, unsigned long); */
 }
 
 void MyLua_Free(lua_State *L)
 {
 	lua_close(L);
-	/* free(ev); */
 }
+
