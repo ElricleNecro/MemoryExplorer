@@ -120,7 +120,7 @@ int main(int argc, const char **argv)
 				i++;
 			}
 			ev = Event_NewFromCmd(nb_args, l_args);
-			Event_Launch(ev);
+			/* Event_Launch(ev); */
 			free(l_args);
 		}
 		else
