@@ -133,19 +133,6 @@ solution("Hacking")
 			}
 		)
 
-	project("LuaAutoC")
-		language("C")
-		kind("StaticLib")
-
-		location("build/lib")
-		targetdir("build/lib")
-
-		files(
-			{
-				".submodule/LuaAutoC/lautoc.c"
-			}
-		)
-
 	project("scanner")
 		language("C")
 		kind("ConsoleApp")
@@ -202,7 +189,6 @@ solution("Hacking")
 		links(
 			{
 				"ParseArgsC",
-				"LuaAutoC",
 				"logger",
 				"dict",
 				"lua",
