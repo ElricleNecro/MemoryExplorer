@@ -15,7 +15,7 @@ static inline unsigned long long bswap_64(unsigned long long x) {
 }
 #endif // }
 
-Event* Event_New(pid_t pid, const char *mem_file)
+Event* Event_New(pid_t pid)
 {
 	Event *ev = NULL;
 
@@ -25,34 +25,108 @@ Event* Event_New(pid_t pid, const char *mem_file)
 		return NULL;
 	}
 
+	ev->log = Logger_New(stderr, "Process", ALL);
+	ev->mem = NULL;			//<- memory map
+
+	Event_SetPID(ev, pid);
+
+	return ev;
+}
+
+Event* Event_NewFromCmd(const int nb_args, const char **args)
+{
+	Event *ev = NULL;
+
+	if( (ev = malloc(sizeof(Event))) == NULL )
+	{
+		perror("Allocation error:");
+		return NULL;
+	}
+
+	ev->pid = 0;		//<- pid of the process to read
+	ev->log = Logger_New(stderr, "Process", ALL);
+	ev->mem = NULL;			//<- memory map
+
+	ev->nb_args = nb_args;
+	if( (ev->args = malloc(sizeof(char*) * ( ev->nb_args + 1 ))) == NULL )
+	{
+		perror("Allocation error:");
+		Logger_Free(ev->log);
+		free(ev);
+
+		return NULL;
+	}
+
+	ev->args[ ev->nb_args ] = NULL;
+	for(int i=0; i<nb_args; i++)
+	{
+		ev->args[i] = malloc(sizeof(char) * strlen(args[i]));
+		strcpy(ev->args[i], args[i]);
+	}
+
+	return ev;
+}
+
+void Event_SetPID(Event *ev, pid_t pid)
+{
+	char mem_file[1024];
+
 	ev->pid = pid;		//<- pid of the process to read
+	snprintf(mem_file, 1023, "/proc/%d/mem", ev->pid);
+
 	ev->mem_fd = open(
 		mem_file,
 		O_RDWR
 	);				//<- pid memory file
-	ev->log = Logger_new(stderr, "test", ALL);
-	ev->mem = NULL;			//<- memory map
-	ev->quit = false;		//<- we do not want to terminate the program right now
-	ev->_addr = (unsigned long)ev;
 
-	Logger_info(
+	Logger_Info(
 		ev->log,
 		"Preparing memory mapping.\n"
 	);
 
 	Maps_read(&ev->mem, ev->pid);
-
-	return ev;
 }
 
-/* Event* Event_From_cmd(const char *cmd) */
-/* { */
-/* } */
+static int do_child(char **cmd)
+{
+	// Launch the command.
+#ifdef USE_PTRACE
+	ptrace(PTRACE_TRACEME, NULL, NULL, NULL);		// We are nofying the system we want to be ptraced!
+#endif
+	return execvp(cmd[0], cmd);
+}
+
+void Event_Launch(Event *ev)
+{
+	if( ev->pid == 0 )
+	{
+		ev->pid = fork();
+		if( ev->pid == 0 )
+			exit(do_child(ev->args));
+#ifdef USE_PTRACE // {
+#ifdef DEBUG_SIGNALS // {
+		int status;
+		waitpid(ev->pid, &status, 0);
+		if( WIFCONTINUED(status) )
+			fprintf(stderr, "Pid %d continued\n", ev->pid);
+		else if( WIFSTOPPED(status) )
+			fprintf(stderr, "Pid %d is stopped.\n", ev->pid);
+		else
+			fprintf(stderr, "Pid %d has status %d.\n", ev->pid, status);
+#else
+		waitpid(ev->pid, NULL, 0);
+#endif // }
+		ptrace(PTRACE_DETACH, ev->pid, NULL, NULL);
+#endif // }
+	}
+
+	Event_SetPID(ev, ev->pid);
+}
 
 void Event_Free(Event *ev)
 {
 	Maps_free(&ev->mem);
-	Logger_free(ev->log);
+	Logger_Free(ev->log);
 
 	free(ev);
 }
@@ -64,7 +138,7 @@ bool Event_Attach(Event *ev)
 
 	if( ptrace(PTRACE_ATTACH, ev->pid, NULL, NULL) == -1L )
 	{
-		Logger_error(
+		Logger_Error(
 			ev->log,
 			"Error while attaching the process: '%s'.",
 			strerror(errno)
@@ -74,7 +148,7 @@ bool Event_Attach(Event *ev)
 
 	if( ( waitpid(ev->pid, &status, 0) == -1L ) || !WIFSTOPPED(status) )
 	{
-		Logger_error(
+		Logger_Error(
 			ev->log,
 			"Error while stopping the process: '%s'.",
 			strerror(errno)
@@ -89,7 +163,7 @@ bool Event_Detach(Event *ev)
 {
 	if( ptrace(PTRACE_DETACH, ev->pid, NULL, NULL) == -1L)
 	{
-		Logger_error(
+		Logger_Error(
 			ev->log,
 			"Error while detaching the process: '%s'.",
 			strerror(errno)
@@ -104,7 +178,7 @@ bool Event_Detach(Event *ev)
 // If the read is succesful, it will print the result
 bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 {
-	Logger_info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
+	Logger_Info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
 	char *buf = NULL;
 	size_t to_allocate = bytes_to_read * sizeof(char);
@@ -114,7 +188,7 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 #endif
 	if( (buf = malloc(to_allocate)) == NULL )
 	{
-		Logger_error(
+		Logger_Error(
 			ev->log,
 			"Allocation error: '%s'\n",
 			strerror(errno)
@@ -157,7 +231,7 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 // If the read is succesful, it will print the result
 bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 {
-	Logger_info(ev->log, "writeing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
+	Logger_Info(ev->log, "writeing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
 
 #ifdef USE_PURE_PTRACE
 	void *data = NULL;
@@ -204,7 +278,7 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 {
 	ssize_t nread;
 
-	Logger_info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
+	Logger_Info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
 	char *buf = NULL;
 
@@ -212,7 +286,7 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 
 	if( (buf = malloc(bytes_to_read)) == NULL )
 	{
-		Logger_error(
+		Logger_Error(
 			ev->log,
 			"Allocation error: '%s'\n",
 			strerror(errno)
@@ -237,7 +311,7 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 
 	if( nread != bytes_to_read )
 	{
-		Logger_error(
+		Logger_Error(
 			ev->log,
 			"Allocation error: '%s'\n",
 			strerror(errno)
@@ -252,7 +326,7 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 
 bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 {
-	Logger_info(ev->log, "writeing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
+	Logger_Info(ev->log, "writeing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
 
 	ssize_t nwrite;
 	struct iovec local, remote;
@@ -274,7 +348,7 @@ bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 
 	if( nwrite != bytes_to_write )
 	{
-		Logger_error(
+		Logger_Error(
 			ev->log,
 			"Allocation error: '%s'\n",
 			strerror(errno)
@@ -286,16 +360,9 @@ bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 }
 #endif // }
 
-// This function allow the user to quit the program
-bool Event_Quit(Event *ev)
-{
-	ev->quit = true;
-	return true;
-}
-
 bool Event_PrintMap(Event *ev)
 {
-	Logger_debug(
+	Logger_Debug(
 		ev->log,
 		"Entering '%s' function\n",
 		__func__
@@ -320,7 +387,7 @@ bool Event_PrintMap(Event *ev)
 		printf("\t-> %s\n", zone->filename);
 	}
 
-	Logger_debug(
+	Logger_Debug(
 		ev->log,
 		"Leaving '%s' function\n",
 		__func__

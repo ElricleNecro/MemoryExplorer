@@ -71,28 +71,36 @@ struct _event;
 typedef bool (*callback)(struct _event*, char*);
 
 typedef struct _event {
+	// PID:
 	pid_t pid;
+
+	// Memory file identifier:
 	int mem_fd;
+
+	// Memory mapping of the process:
 	Maps mem;
+
+	// Logger specific to the process:
 	Logger *log;
 
-	bool quit;
-
-	unsigned long _addr;
+	// Command and arguments:
+	char **args;
+	int nb_args;
 } Event;
 
-Event* Event_New(pid_t pid, const char *mem_file);
+Event* Event_New(pid_t pid);
+Event* Event_NewFromCmd(const int nb_args, const char **args);
 void Event_Free(Event *ev);
 
-bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out);
-bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_read, void *in);
-
-bool Event_Quit(Event *ev);
+void Event_SetPID(Event *ev, pid_t pid);
+void Event_Launch(Event *ev);
 bool Event_PrintMap(Event *ev);
-
 #ifdef USE_PTRACE // {
 bool Event_Attach(Event *ev);
 bool Event_Detach(Event *ev);
 #endif // }
+
+bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out);
+bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_read, void *in);
 
 #endif /* end of include guard: HACK_H_326FWU4H */
