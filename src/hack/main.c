@@ -94,48 +94,41 @@ int main(int argc, const char **argv)
 		return EXIT_SUCCESS;
 	}
 
-	if( args->rest && pid == 0)
-	{
-		pid = fork();
-		if( pid == 0 )
-		{
-			return do_child(args->rest);
-			// return do_child(argc - 1, argv + 1);
-		}
-
-#ifdef USE_PTRACE
-#ifdef DEBUG_SIGNALS
-		int status;
-		waitpid(pid, &status, 0);
-		if( WIFCONTINUED(status) )
-			fprintf(stderr, "Pid %d continued\n", pid);
-		else if( WIFSTOPPED(status) )
-			fprintf(stderr, "Pid %d is stopped.\n", pid);
-		else
-			fprintf(stderr, "Pid %d has status %d.\n", pid, status);
-#else
-		waitpid(pid, NULL, 0);
-#endif
-		ptrace(PTRACE_DETACH, pid, NULL, NULL);
-#endif
-	}
-	Args_Free(args);
-
 	bool error = false;
 	bool quit = false;
 #ifdef USE_readline
 	RLData cli;
 	/* char *cmd; */
 #endif
-	Logger *log = Logger_new(stderr, argv[0], INFO);
+	Logger *log = Logger_New(stderr, argv[0], INFO);
 	lua_State *L = NULL;
 	char input[1024];			//<- the input string...
-	snprintf(input, 1023, "/proc/%d/mem", pid);
 
 	{
-		Event *ev = Event_New(pid, input);
+		Event *ev = NULL;
+		if( pid == 0 )
+		{
+			int nb_args = 0, i = 0;
+			for(CList act = args->rest; act; act = act->next)
+				nb_args++;
+
+			// We are preparing the arguments:
+			const char **l_args = malloc(nb_args * sizeof(char*));
+			for(CList act = args->rest; act; act=act->next)
+			{
+				l_args[i] = act->opt;
+				i++;
+			}
+			ev = Event_NewFromCmd(nb_args, l_args);
+			Event_Launch(ev);
+			free(l_args);
+		}
+		else
+		{
+			ev = Event_New(pid);
+		}
 		L = MyLua_Init(conf, ev, &quit);
-		Logger_info(log, "Writing pid %d\n", ev->pid);
+		Logger_Info(log, "Writing pid %d\n", ev->pid);
 		free(ev);
 	}
 
@@ -144,7 +137,7 @@ int main(int argc, const char **argv)
 	memset(input, 0, 1024 * sizeof(char));	//<- ... is set to 0 everywhere
 
 #ifdef USE_readline
-	Logger_info(
+	Logger_Info(
 		log,
 		"Loading readline.\n"
 	);
@@ -153,10 +146,12 @@ int main(int argc, const char **argv)
 	RLData_readHistory(&cli);
 #endif
 
-	Logger_info(
+	Logger_Info(
 		log,
 		"Beginning loop.\n"
 	);
+
+	Args_Free(args);
 
 	while( !quit )			//<- the event loop, where we will interprete all command
 	{
@@ -165,7 +160,7 @@ int main(int argc, const char **argv)
 
 		/* cmd = trim(cli.line);		//<- ... we trimmed it... */
 
-		Logger_debug(log, "We've get: '%s'\n", ( cli.line )?cli.line:"^D");
+		Logger_Debug(log, "We've get: '%s'\n", ( cli.line )?cli.line:"^D");
 
 		if( !cli.line )
 		{
@@ -175,7 +170,7 @@ int main(int argc, const char **argv)
 
 		error = luaL_loadbuffer(L, cli.line, strlen(cli.line), "line") || lua_pcall(L, 0, 0, 0);
 		if (error) {
-			Logger_error(
+			Logger_Error(
 				log,
 				"LUA error: '%s'.\n",
 				lua_tostring(L, -1)
@@ -194,7 +189,7 @@ int main(int argc, const char **argv)
 			input[strlen(input) - 1] = '\0';
 		error = luaL_loadbuffer(L, input, strlen(input), "line") || lua_pcall(L, 0, 0, 0);
 		if (error) {
-			Logger_error(
+			Logger_Error(
 				log,
 				"LUA error: '%s'.\n",
 				lua_tostring(L, -1)
@@ -205,12 +200,12 @@ int main(int argc, const char **argv)
 	}
 
 #ifdef USE_readline
-	Logger_info(log, "Saving history to file.\n");
+	Logger_Info(log, "Saving history to file.\n");
 	RLData_saveHistory(&cli);
 
 	RLData_free(&cli);
 #endif
-	Logger_free(log);
+	Logger_Free(log);
 	MyLua_Free(L);
 
 	return EXIT_SUCCESS;
