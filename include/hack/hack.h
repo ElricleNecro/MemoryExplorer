@@ -94,6 +94,7 @@ void Event_Free(Event *ev);
 
 void Event_SetPID(Event *ev, pid_t pid);
 void Event_Launch(Event *ev);
+void Event_ReadMap(Event *ev);
 bool Event_PrintMap(Event *ev);
 #ifdef USE_PTRACE // {
 bool Event_Attach(Event *ev);

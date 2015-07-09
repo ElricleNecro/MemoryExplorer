@@ -83,7 +83,10 @@ void Event_SetPID(Event *ev, pid_t pid)
 		ev->log,
 		"Preparing memory mapping.\n"
 	);
+}
 
+void Event_ReadMap(Event *ev)
+{
 	Maps_read(&ev->mem, ev->pid);
 }
 
@@ -378,6 +381,8 @@ bool Event_PrintMap(Event *ev)
 			printf("Exe from 0x%lx -> 0x%lx (%lu)\n", zone->start, zone->end, zone->end - zone->start);
 		else if( zone->type == CODE )
 			printf("Code from 0x%lx -> 0x%lx (%lu)\n", zone->start, zone->end, zone->end - zone->start);
+		else
+			printf("Something else...");
 		if( zone->read == 'r' )
 			printf("\t-> Read permission\n");
 		if( zone->write == 'w' )
