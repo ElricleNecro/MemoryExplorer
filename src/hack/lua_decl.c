@@ -96,8 +96,8 @@ void event_create_from_c(lua_State *L, Event *ev) {
  */
 int event_quit(lua_State *L) {
 	Event *ev = event_check(L);
-	lua_pushboolean(L, ev->quit);
 	return 1;
+	(void)ev;
 }
 
 /**
@@ -123,8 +123,15 @@ int event_2string(lua_State *L) {
  */
 int event_free(lua_State *L) {
 	Event *ev = event_check(L);
+
+	for(int i=0; ev->args[i] != NULL; i++)
+	{
+		free(ev->args[i]);
+	}
+	free(ev->args);
+
 	Maps_free(&ev->mem);
-	Logger_free(ev->log);
+	Logger_Free(ev->log);
 
 	return 0;
 }
@@ -144,12 +151,12 @@ int event_scan(lua_State *L)
 	const char *str;
 	unsigned long addr = luaL_checklong(L, 2), to_read = luaL_checklong(L, 3);
 
-	Logger_debug(
+	Logger_Debug(
 		ev->log,
 		"Address to read: '0x%lx'\n",
 		addr
 	);
-	Logger_debug(
+	Logger_Debug(
 		ev->log,
 		"Bytes to read: '%ld'\n",
 		to_read
@@ -166,7 +173,7 @@ int event_scan(lua_State *L)
 
 	if( !strcmp(str, "int") )
 	{
-		Logger_debug(
+		Logger_Debug(
 			ev->log,
 			"Representation as int: '%d'\n",
 			(int)*(char*)out
@@ -175,7 +182,7 @@ int event_scan(lua_State *L)
 	}
 	else if( !strcmp(str, "long") )
 	{
-		Logger_debug(
+		Logger_Debug(
 			ev->log,
 			"Representation as long: '%ld'\n",
 			(long)*(char*)out
@@ -184,7 +191,7 @@ int event_scan(lua_State *L)
 	}
 	else if( !strcmp(str, "float") )
 	{
-		Logger_debug(
+		Logger_Debug(
 			ev->log,
 			"Representation as float: '%g'\n",
 			*(float*)out
@@ -193,7 +200,7 @@ int event_scan(lua_State *L)
 	}
 	else if( !strcmp(str, "double") )
 	{
-		Logger_debug(
+		Logger_Debug(
 			ev->log,
 			"Representation as double: '%g'\n",
 			*(double*)out
@@ -221,12 +228,12 @@ int event_write(lua_State *L)
 	const char *str;
 	unsigned long addr = luaL_checklong(L, 2), to_write = luaL_checklong(L, 3);
 
-	Logger_debug(
+	Logger_Debug(
 		ev->log,
 		"Address to write: '0x%lx'\n",
 		addr
 	);
-	Logger_debug(
+	Logger_Debug(
 		ev->log,
 		"Bytes to write: '%ld'\n",
 		to_write
@@ -238,15 +245,15 @@ int event_write(lua_State *L)
 	{
 		if( (in = malloc(sizeof(int))) == NULL )
 		{
-			Logger_error(
+			Logger_Error(
 				ev->log,
 				"Allocation error: '%s'\n",
 				strerror(errno)
 			);
 		}
-		Logger_debug(ev->log, "'%s' -- > '%d'\n", lua_tostring(L, 5), luaL_checkint(L, 5));
+		Logger_Debug(ev->log, "'%s' -- > '%d'\n", lua_tostring(L, 5), luaL_checkint(L, 5));
 		*((int*)in) = luaL_checkint(L, 5);
-		Logger_debug(
+		Logger_Debug(
 			ev->log,
 			"Going to write '%d'\n",
 			*((int*)in)
@@ -256,14 +263,14 @@ int event_write(lua_State *L)
 	{
 		if( (in = malloc(sizeof(long))) == NULL )
 		{
-			Logger_error(
+			Logger_Error(
 				ev->log,
 				"Allocation error: '%s'\n",
 				strerror(errno)
 			);
 		}
 		*((long*)in) = luaL_checklong(L, 5);
-		Logger_debug(
+		Logger_Debug(
 			ev->log,
 			"Going to write '%ld'\n",
 			*((long*)in)
@@ -273,14 +280,14 @@ int event_write(lua_State *L)
 	{
 		if( (in = malloc(sizeof(float))) == NULL )
 		{
-			Logger_error(
+			Logger_Error(
 				ev->log,
 				"Allocation error: '%s'\n",
 				strerror(errno)
 			);
 		}
 		*((float*)in) = luaL_checkfloat(L, 5);
-		Logger_debug(
+		Logger_Debug(
 			ev->log,
 			"Going to write '%g'\n",
 			*((float*)in)
@@ -290,14 +297,14 @@ int event_write(lua_State *L)
 	{
 		if( (in = malloc(sizeof(double))) == NULL )
 		{
-			Logger_error(
+			Logger_Error(
 				ev->log,
 				"Allocation error: '%s'\n",
 				strerror(errno)
 			);
 		}
 		*((double*)in) = luaL_checkdouble(L, 5);
-		Logger_debug(
+		Logger_Debug(
 			ev->log,
 			"Going to write '%g'\n",
 			*((double*)in)
@@ -321,6 +328,22 @@ int event_write(lua_State *L)
 	return 0;
 }
 
+int event_run(lua_State *L)
+{
+	if( lua_gettop(L) != 1 )
+	{
+		lua_pushstring(L, "Invalid number of argument.");
+		lua_error(L);
+
+		return 0;
+	}
+
+	Event *ev = event_check(L);
+
+	Event_Launch(ev);
+
+	return 0;
+}
 
 /**
  * Setting event associated function.
@@ -341,6 +364,7 @@ static const struct luaL_Reg Event_m[] = {
 	{"pid", event_pid},
 	{"scan", event_scan},
 	{"write", event_write},
+	{"run", event_run},
 	{NULL, NULL},
 };
 
