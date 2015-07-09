@@ -5,7 +5,7 @@ static char *def_warn = "\033[33m[WARNING]\033[00m ";
 static char *def_debug = "\033[36m[DEBUG]\033[00m ";
 static char *def_info = "\033[32m[INFO]\033[00m ";
 
-Logger* Logger_new(FILE *out, const char *name, enum _Level level)
+Logger* Logger_New(FILE *out, const char *name, enum _Level level)
 {
 	Logger *log = NULL;
 
@@ -40,7 +40,12 @@ Logger* Logger_new(FILE *out, const char *name, enum _Level level)
 	return log;
 }
 
-void Logger_free(Logger *log)
+void Logger_SetLevel(Logger *log, Level level)
+{
+	log->level = level;
+}
+
+void Logger_Free(Logger *log)
 {
 	if( log->dealloc_error && log->error != NULL )
 		free(log->error);
@@ -61,7 +66,7 @@ void Logger_free(Logger *log)
 	free(log);
 }
 
-int print_with_prompt(FILE *out, const char *ppt, const char *str, va_list va)
+static int print_with_prompt(FILE *out, const char *ppt, const char *str, va_list va)
 {
 	int ret;
 	size_t s_len = strlen(str), p_len = strlen(ppt);
@@ -86,7 +91,7 @@ int print_with_prompt(FILE *out, const char *ppt, const char *str, va_list va)
 	return ret;
 }
 
-int Logger_error(Logger *log, const char *str, ...)
+int Logger_Error(Logger *log, const char *str, ...)
 {
 	if( log->level < ERROR )
 		return 0;
@@ -107,7 +112,7 @@ int Logger_error(Logger *log, const char *str, ...)
 	return ret;
 }
 
-int Logger_warn(Logger *log, const char *str, ...)
+int Logger_Warn(Logger *log, const char *str, ...)
 {
 	if( log->level < WARN )
 		return 0;
@@ -128,7 +133,7 @@ int Logger_warn(Logger *log, const char *str, ...)
 	return ret;
 }
 
-int Logger_debug(Logger *log, const char *str, ...)
+int Logger_Debug(Logger *log, const char *str, ...)
 {
 	if( log->level < DEBUG )
 		return 0;
@@ -149,7 +154,7 @@ int Logger_debug(Logger *log, const char *str, ...)
 	return ret;
 }
 
-int Logger_info(Logger *log, const char *str, ...)
+int Logger_Info(Logger *log, const char *str, ...)
 {
 	if( log->level < INFO )
 		return 0;

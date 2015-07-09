@@ -32,12 +32,15 @@ typedef struct _Logger {
 	     *name;
 } Logger;
 
-Logger* Logger_new(FILE *out, const char *name, enum _Level level);
-void Logger_free(Logger *log);
+Logger* Logger_New(FILE *out, const char *name, enum _Level level);
+void Logger_Free(Logger *log);
 
-int Logger_info(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));
-int Logger_error(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));
-int Logger_warn(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));
-int Logger_debug(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));
+void Logger_SetLevel(Logger *log, Level level);
+
+int Logger_Info(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));
+int Logger_Error(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));
+int Logger_Warn(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));
+int Logger_Debug(Logger *log, const char *str, ...) __attribute__ ((format (printf, 2, 3)));
 
 #endif /* end of include guard: LOGGER_H_7FKXRP9Q */
+
