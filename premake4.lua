@@ -145,7 +145,8 @@ solution("Hacking")
 				"src/hack/hack.c",
 				"src/hack/main.c",
 				"src/hack/maps.c",
-				"src/hack/lua_decl.c"
+				"src/hack/lua_decl.c",
+				"src/hack/lua/*",
 			}
 		)
 
