@@ -2,8 +2,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int main(void)
+int main(int argc, const char **argv)
 {
+	printf("argc == %d\n", argc);
+	for(int i=0; i<argc; i++)
+		printf("%d -> '%s'\n", i, argv[i]);
+
 	int stop = 5, a = 0;
 	double *d = malloc(sizeof(double));
 
@@ -22,3 +26,4 @@ int main(void)
 
 	return 0;
 }
+
