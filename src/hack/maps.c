@@ -31,7 +31,7 @@ char* get_exe_name(const char *link)
 	return bin_name;
 }
 
-void get_region_type(Maps zone, const char *bin_name, size_t prev_end)
+bool get_region_type(Maps zone, const char *bin_name, size_t prev_end)
 {
 	bool is_exe = false;
 	static unsigned int regions = 0;
@@ -76,7 +76,14 @@ void get_region_type(Maps zone, const char *bin_name, size_t prev_end)
 			(zone)->type = HEAP;
 		else if(!strcmp((zone)->filename, "[stack]"))
 			(zone)->type = STACK;
+		else
+			return false;
+			/* (zone)->type = _ALL; */
 	}
+	else
+		return false;
+
+	return true;
 }
 
 bool Maps_read(struct _maps **zone, pid_t pid)
@@ -106,8 +113,14 @@ bool Maps_read(struct _maps **zone, pid_t pid)
 	while( getline(&line, &lon, fich) != -1 )
 	{
 		if( *zone == NULL )
+		{
 			*zone = malloc(sizeof(struct _maps));
+			(*zone)->filename = NULL;
+		}
 		(*zone)->next = NULL;
+
+		if( (*zone)->filename != NULL )
+			free((*zone)->filename);
 
 		if( ((*zone)->filename = malloc(lon * sizeof(char))) == NULL )
 		{
@@ -134,15 +147,23 @@ bool Maps_read(struct _maps **zone, pid_t pid)
 			(*zone)->filename
 		) >= 6 )
 		{
-			get_region_type(*zone, bin_name, prev_end);
-
-			prev_end = (*zone)->end;
-
-			zone = &(*zone)->next;
+			if( get_region_type(*zone, bin_name, prev_end) )
+			{
+				prev_end = (*zone)->end;
+				zone = &(*zone)->next;
+			}
+			else
+			{
+				free((*zone)->filename);
+				free(*zone);
+				*zone = NULL;
+			}
 		}
 		else
 		{
+			free((*zone)->filename);
 			free(*zone);
+			*zone = NULL;
 		}
 	}
 
