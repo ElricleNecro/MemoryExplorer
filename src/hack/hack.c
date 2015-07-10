@@ -183,8 +183,8 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 {
 	Logger_Info(ev->log, "Reading %zu bytes from 0x%zx for pid(%d)\n", bytes_to_read, offset, ev->pid);
 
-	char *buf = NULL;
-	size_t to_allocate = bytes_to_read * sizeof(char);
+	int8_t *buf = NULL;
+	size_t to_allocate = bytes_to_read * sizeof(int8_t);
 
 #ifdef USE_PURE_PTRACE
 	to_allocate += to_allocate % sizeof(long);
@@ -203,19 +203,25 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 		return false;
 
 #ifdef USE_PURE_PTRACE
-	char *ptr = buf;
+	int8_t *ptr = buf;
 
-	/* for(int i = 0; i < bytes_to_read; i+=sizeof(long),ptr+=sizeof(long)) */
-	/* { */
-		*buf = ptrace(
+	for(int i = 0; i < bytes_to_read; i+=sizeof(long),ptr+=sizeof(long))
+	{
+		*ptr = ptrace(
 			PTRACE_PEEKDATA,
 			ev->pid,
-			offset,
+			offset + i,
 			NULL
 		);
+		/* *buf = ptrace( */
+			/* PTRACE_PEEKDATA, */
+			/* ev->pid, */
+			/* offset, */
+			/* NULL */
+		/* ); */
 
 		/* printf("%d -- before: %d (read %d -- %d)\n", i, bytes_to_read, (int)*ptr, *ptr); */
-	/* } */
+	}
 #elif defined(USE_lseek_read)
 	lseek(ev->mem_fd, offset, SEEK_SET);
 	read(ev->mem_fd, buf, bytes_to_read);
@@ -223,7 +229,7 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 	pread(ev->mem_fd, buf, bytes_to_read, offset);
 #endif
 
-	*(char**)out = buf;
+	*(int8_t**)out = buf;
 
 	/* ptrace(PTRACE_POKEDATA, ev->pid, ) */
 
@@ -234,15 +240,18 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 // If the read is succesful, it will print the result
 bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 {
-	Logger_Info(ev->log, "writeing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
+	Logger_Info(ev->log, "writing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
 
 #ifdef USE_PURE_PTRACE
 	void *data = NULL;
 
+	size_t to_write = bytes_to_write * sizeof(int8_t);
+	to_write += to_write % sizeof(long);
+
 	// If we want to write something smaller than a word (sizeof(long)), we are going to need the surrounding memory.
-	if( bytes_to_write < sizeof(long) )
+	if( bytes_to_write % sizeof(long) != 0 )
 	{
-		scan(ev, offset, bytes_to_write, &data);
+		Event_Scan(ev, offset, bytes_to_write, &data);
 
 		memcpy(data, in, bytes_to_write);
 		/* for (int i = 0; i < bytes_to_write; ++i) */
@@ -259,12 +268,15 @@ bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 
 #ifdef USE_PURE_PTRACE
 
-	ptrace(
-		PTRACE_POKEDATA,
-		ev->pid,
-		offset,
-		data
-	);
+	for(int i=0; i<to_write; i+=sizeof(long),data+=sizeof(long))
+	{
+		ptrace(
+			PTRACE_POKEDATA,
+			ev->pid,
+			offset,
+			data
+		);
+	}
 
 #elif defined(USE_lseek_write)
 	lseek(ev->mem_fd, offset, SEEK_SET);

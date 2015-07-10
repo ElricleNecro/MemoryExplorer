@@ -22,16 +22,6 @@
 	#include <sys/uio.h>
 #endif // }
 
-#if defined(USE_PTRACE) && (defined(__APPLE__) && defined(__MACH__)) // {
-	#define PTRACE_ATTACH PT_ATTACH
-	#define PTRACE_DETACH PT_DETACH
-	#define PTRACE_TRACEME PT_TRACE_ME
-	#define PTRACE_CONT PT_CONTINUE
-
-	#define PTRACE_PEEKDATA PT_READ_D
-	#define PTRACE_POKEDATA PT_WRITE_D
-#endif // }
-
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -40,6 +30,7 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #ifdef __linux__ // {
@@ -54,6 +45,16 @@
 #include "logger/logger.h"
 #include "hack/maps.h"
 #include "dict/dict.h"
+
+#if defined(USE_PTRACE) && (defined(__APPLE__) && defined(__MACH__)) // {
+	#define PTRACE_ATTACH PT_ATTACH
+	#define PTRACE_DETACH PT_DETACH
+	#define PTRACE_TRACEME PT_TRACE_ME
+	#define PTRACE_CONT PT_CONTINUE
+
+	#define PTRACE_PEEKDATA PT_READ_D
+	#define PTRACE_POKEDATA PT_WRITE_D
+#endif // }
 
 #ifndef WARNING // {
 	#define WARNING(str, ...) fprintf(stderr, "\033[33mWarning\033[00m: "str"\n", ##__VA_ARGS__)
