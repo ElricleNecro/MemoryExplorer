@@ -237,46 +237,71 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 }
 
 // This function will scan the memory. It takes an argument which is the memory offset to read from the process `ev->pid`.
-// If the read is succesful, it will print the result
 bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 {
 	Logger_Info(ev->log, "writing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
 
 #ifdef USE_PURE_PTRACE
 	void *data = NULL;
+	bool deallocate = false;
 
+	// Number of bytes to write:
 	size_t to_write = bytes_to_write * sizeof(int8_t);
+	// in case we are writing something smaller/bigger than a word:
 	to_write += to_write % sizeof(long);
 
+	Logger_Debug(ev->log, "We are going to write %zu bytes and so need to read first %zu bytes.\n", bytes_to_write, to_write);
+	Logger_Debug(ev->log, "%zu %% %zu == %zu\n", to_write, sizeof(long), to_write % sizeof(long));
+
 	// If we want to write something smaller than a word (sizeof(long)), we are going to need the surrounding memory.
-	if( bytes_to_write % sizeof(long) != 0 )
+	if( ( bytes_to_write * sizeof(int8_t) ) % sizeof(long) != 0 )
 	{
+		// As Event_Scan allocate memory, we need to free it at the end:
+		deallocate = true;
+		Logger_Debug(ev->log, "Reading the %zu bytes...\n", to_write);
+		// Reading the chunk we need:
 		Event_Scan(ev, offset, bytes_to_write, &data);
 
-		memcpy(data, in, bytes_to_write);
-		/* for (int i = 0; i < bytes_to_write; ++i) */
-		/* { */
-			/* ((char*)data)[i] = ((char*)in)[i]; */
-		/* } */
+		// For debug purpose we check the actual value:
+		Logger_Debug(ev->log, "Researched value: %d\n", (int)*(int8_t*)data);
+
+		// Writing our data into the chunk:
+		memcpy(data, in, bytes_to_write * sizeof(int8_t));
+
+		// For debug purpose we check the new value:
+		Logger_Debug(ev->log, "Wanted value: %d\n", (int)*(int8_t*)data);
 	}
 	else
+		// If our data as a length correponding to a word:
 		data = in;
 #endif
 
+	// Attaching the process to be able to write:
 	if( !Event_Attach(ev) )
 		return false;
 
 #ifdef USE_PURE_PTRACE
+	void *ptr = data;
 
-	for(int i=0; i<to_write; i+=sizeof(long),data+=sizeof(long))
+	// In case we have to write multiple word, we are looping:
+	for(size_t i=0; i<to_write; i+=sizeof(long),ptr+=sizeof(long))
 	{
+		// Checking the step of the loop:
+		Logger_Debug(ev->log, "i = %zu / %zu\n", i, to_write);
+
+		// Writing a word into the process memory:
 		ptrace(
 			PTRACE_POKEDATA,
 			ev->pid,
 			offset,
-			data
+			/* &val */
+			ptr
 		);
 	}
+
+	// Freeing the Event_Scan memory if needed:
+	if( deallocate )
+		free(data);
 
 #elif defined(USE_lseek_write)
 	lseek(ev->mem_fd, offset, SEEK_SET);
@@ -285,6 +310,7 @@ bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 	pwrite(ev->mem_fd, in, bytes_to_write, offset);
 #endif
 
+	// Detaching it:
 	return Event_Detach(ev);
 }
 // }
@@ -315,6 +341,7 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 	remote.iov_base = (void*)offset;
 	remote.iov_len  = bytes_to_read;
 
+	errno = 0;
 	nread = process_vm_readv(
 		ev->pid,
 		&local,
@@ -352,6 +379,7 @@ bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 	remote.iov_base = (void*)offset;
 	remote.iov_len  = bytes_to_write;
 
+	errno = 0;
 	nwrite = process_vm_writev(
 		ev->pid,
 		&local,
