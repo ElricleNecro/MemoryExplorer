@@ -45,15 +45,6 @@ void event_create_from_c(lua_State *L, Event *ev)
 }
 
 /**
- * Method to get quit.
- */
-/* int event_quit(lua_State *L) { */
-	/* Event *ev = event_check(L); */
-	/* return 1; */
-	/* (void)ev; */
-/* } */
-
-/**
  * Method to get the pid.
  */
 static int event_pid(lua_State *L)

@@ -1,5 +1,3 @@
-Event = open_event()
-
 function test_modif(a_addr, stop_addr)
 	a_value = ev:scan(a_addr, 4, "int")
 	stop_value = ev:scan(stop_addr, 4, "int")

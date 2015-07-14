@@ -6,7 +6,9 @@ lua_State* MyLua_Init(const char *conf, Event *ev, bool *quit)
 	luaL_openlibs(L);
 	/* luaopen_event(L); */
 	luaopen_bool(L);
-	lua_register(L, "open_event", luaopen_event);
+	/* lua_register(L, "open_event", luaopen_event); */
+	luaopen_event(L);
+	lua_setglobal(L, "Event");
 
 	if( conf )
 		luaL_dofile(L, conf);
