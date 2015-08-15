@@ -78,15 +78,15 @@ void Event_SetPID(Event *ev, pid_t pid)
 		mem_file,
 		O_RDWR
 	);				//<- pid memory file
-
-	Logger_Info(
-		ev->log,
-		"Preparing memory mapping.\n"
-	);
 }
 
 void Event_ReadMap(Event *ev)
 {
+	Logger_Info(
+		ev->log,
+		"Preparing memory mapping.\n"
+	);
+
 	Maps_read(&ev->mem, ev->pid);
 }
 
