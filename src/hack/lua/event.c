@@ -319,6 +319,55 @@ static int event_print_map(lua_State *L)
 	return 0;
 }
 
+static int event_get_map(lua_State *L)
+{
+	Event *ev = event_check(L);
+
+	if( ev->mem == NULL )
+	{
+		Event_ReadMap(ev);
+	}
+
+	const char *str = luaL_checkstring(L, 2);
+	RegionType type;
+
+	if( !strcmp(str, "heap") )
+		type = HEAP;
+	else if( !strcmp(str, "stack") )
+		type = STACK;
+	else if( !strcmp(str, "code") )
+		type = CODE;
+	else if( !strcmp(str, "exe") )
+		type = EXE;
+	else
+	{
+		lua_pushfstring(L, "Unknown region type '%s'", str);
+		lua_error(L);
+
+		return 0;
+	}
+
+	Maps zone=ev->mem;
+	for(; zone != NULL; zone=zone->next)
+		if( zone->type == type )
+			break;
+
+	if( zone != NULL )
+	{
+		lua_pushinteger(L, zone->start);
+		lua_pushinteger(L, zone->end);
+
+		return 2;
+	}
+	else
+	{
+		lua_pushstring(L, "Section not found.");
+		lua_error(L);
+
+		return 0;
+	}
+}
+
 /**
  * Setting event associated function.
  */
@@ -339,6 +388,7 @@ static const struct luaL_Reg Event_m[] = {
 	{"run", event_run},
 	{"print_map", event_print_map},
 	{"read_map", event_read_map},
+	{"get_map", event_get_map},
 	{NULL, NULL},
 };
 
