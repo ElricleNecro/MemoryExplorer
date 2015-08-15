@@ -67,6 +67,13 @@ solution("Hacking")
 			}
 		)
 
+		includedirs(
+			{
+				"include/",
+				".submodule/ParseArgsC/include/"
+			}
+		)
+
 	configuration("release")
 		buildoptions(
 			{
@@ -85,14 +92,6 @@ solution("Hacking")
 				"Symbols"
 			}
 		)
-
-	includedirs(
-		{
-			"include/",
-			".submodule/LuaAutoC/",
-			".submodule/ParseArgsC/include/"
-		}
-	)
 
 	project("dict")
 		language("C")
