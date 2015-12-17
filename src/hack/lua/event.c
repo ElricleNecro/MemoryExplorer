@@ -152,7 +152,7 @@ static int event_scan(lua_State *L)
 			"Representation as float: '%g'\n",
 			*(float*)out
 		);
-		lua_pushnumber(L, (float)*(char*)out);
+		lua_pushnumber(L, *(float*)out);
 	}
 	else if( !strcmp(str, "double") )
 	{
@@ -161,7 +161,7 @@ static int event_scan(lua_State *L)
 			"Representation as double: '%g'\n",
 			*(double*)out
 		);
-		lua_pushnumber(L, (double)*(char*)out);
+		lua_pushnumber(L, *(double*)out);
 	}
 
 	free(out);
