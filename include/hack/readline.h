@@ -18,4 +18,6 @@ bool RLData_get(RLData *data);
 bool RLData_saveHistory(RLData *data);
 bool RLData_readHistory(RLData *data);
 
+void RLData_setPrompt(RLData *data, const char *new_prompt);
+
 #endif /* end of include guard: READLINE_H_VHEMJUKD */

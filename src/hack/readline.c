@@ -46,6 +46,19 @@ void RLData_free(RLData *data)
 		free(data->line), data->line = NULL;
 }
 
+void RLData_setPrompt(RLData *data, const char *new_prompt)
+{
+	if( !new_prompt )
+		free(data->prompt),data->prompt=NULL;
+	char *new = realloc(data->prompt, ( 1 + strlen(new_prompt) ) * sizeof(char));
+
+	if( new )
+	{
+		data->prompt = new;
+		strncpy(data->prompt, new_prompt, strlen(new_prompt));
+	}
+}
+
 bool RLData_get(RLData *data)
 {
 	if( data->line )			// Is line has already been allocated...
