@@ -368,7 +368,7 @@ bool Event_Scan(Event *ev, size_t offset, ssize_t bytes_to_read, void *out)
 
 bool Event_Write(Event *ev, size_t offset, ssize_t bytes_to_write, void *in)
 {
-	Logger_Info(ev->log, "writeing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
+	Logger_Info(ev->log, "writing %zu bytes from 0x%zx for pid(%d)\n", bytes_to_write, offset, ev->pid);
 
 	ssize_t nwrite;
 	struct iovec local, remote;
