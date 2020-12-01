@@ -46,7 +46,6 @@ int do_child(CList l_args)
 
 	// We are preparing the arguments:
 	char *args[nb_args + 1];
-	// memcpy(args, argv, nb_args*sizeof(char*));
 	for(CList act = l_args; act; act=act->next)
 	{
 		args[i] = act->opt;
@@ -59,17 +58,6 @@ int do_child(CList l_args)
 #endif
 
 	return execvp(args[0], args);	// We launch the command, which will replace the child process.
-/*
-	char *args[argc + 1];
-	memcpy(args, argv, argc*sizeof(char*));
-	args[argc] = NULL;		// The array must be NULL terminated.
-
-#ifdef USE_PTRACE
-	ptrace(PTRACE_TRACEME, NULL, NULL, NULL);		// We are nofying the system we want to be ptraced!
-#endif
-
-	return execvp(args[0], args);	// We launch the command, which will replace the child process.
-*/
 }
 
 int main(int argc, const char **argv)
