@@ -1,6 +1,6 @@
 #include "hack/maps.h"
 
-void to_first_space(char *str)
+static void to_first_space(char *str)
 {
 	while( !isspace(*str) && *str != '\0' )
 	{
@@ -9,7 +9,7 @@ void to_first_space(char *str)
 	*str = '\0';
 }
 
-char* get_exe_name(const char *link)
+static char* get_exe_name(const char *link)
 {
 	unsigned int lb_size = 0;
 	char *bin_name = NULL;
@@ -31,7 +31,7 @@ char* get_exe_name(const char *link)
 	return bin_name;
 }
 
-bool get_region_type(Maps zone, const char *bin_name, size_t prev_end)
+static bool get_region_type(Maps zone, const char *bin_name, size_t prev_end)
 {
 	bool is_exe = false;
 	static unsigned int regions = 0;
